@@ -216,7 +216,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 ## Contact
 
-Felipe - [@your_twitter](https://twitter.com/your_twitter) - email@example.com
+Felipe - [@felipebarcelospro](https://twitter.com/felipebarcelospro) - felipebarcelospro@gmail.com
 
 Project Link: [https://github.com/felipebarcelospro/drift](https://github.com/felipebarcelospro/drift)
 

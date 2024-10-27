@@ -34,9 +34,8 @@ export default function PrivacyPolicy() {
           Privacy Policy for {config.projectName}
         </h1>
         <p className="text-lg sm:text-xl mb-8 sm:mb-10 md:mb-12 text-muted-foreground">
-          We are committed to protecting your privacy and ensuring the security
-          of your data. This policy outlines our practices regarding the{" "}
-          {config.projectName} extension.
+          This policy outlines our practices regarding the {config.projectName} library,
+          an ORM for Deno KV.
         </p>
       </section>
 
@@ -44,98 +43,74 @@ export default function PrivacyPolicy() {
         <div className="grid grid-cols-1 gap-4 sm:gap-6 md:gap-8">
           <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              1. Information Collection and Use
+              1. Library Usage and Data Handling
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              The {config.projectName} extension is designed with a
-              privacy-first approach. We do not collect, store, or transmit any
-              personal information. All theme customizations are performed
-              locally within your browser, ensuring that your data remains under
-              your control at all times.
+              {config.projectName} is an open-source ORM library for Deno KV. As a library,
+              it does not collect, store, or transmit any data itself. All data operations
+              are performed within your application's context using Deno KV as the storage
+              backend. The library provides the tools and interfaces for data manipulation,
+              but the actual data handling is controlled entirely by your application.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              2. Data Storage
+              2. Data Storage Responsibility
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Any theme customizations you create are stored locally in your
-              browser using Chrome&apos;s storage API. This data is accessible
-              only to you and is not shared with us or any third parties. The
-              security of your customizations is dependent on your local browser
-              security settings.
+              When using {config.projectName}, all data storage and management is handled
+              by your application through Deno KV. We do not have access to any data
+              stored or managed using our library. It is your responsibility to ensure
+              proper data handling and compliance with relevant privacy laws and regulations
+              in your application.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              3. Third-Party Services
+              3. Open Source Nature
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Our extension operates independently and does not integrate with
-              any third-party services. This means that no external entities
-              have access to your data or customizations, further protecting
-              your privacy.
+              {config.projectName} is an open-source library, similar to Prisma, Zod, or
+              Next Auth. The source code is publicly available and can be audited on
+              GitHub. We maintain transparency about the library's functionality and
+              encourage community contributions while adhering to best practices in
+              software development.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              4. Security Measures
+              4. Security Best Practices
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              We have implemented reasonable technical and organizational
-              measures to protect the integrity of our extension. However, as
-              the extension operates locally, we recommend keeping your browser
-              and operating system up-to-date to maintain optimal security for
-              your customizations.
+              While we strive to maintain secure coding practices in our library
+              implementation, the security of your data depends on how you implement
+              and use {config.projectName} in your application. We recommend following
+              Deno security best practices and implementing appropriate access controls
+              in your application.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              5. Updates to Privacy Policy
+              5. Updates and Versioning
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              We may update this privacy policy from time to time to reflect
-              changes in our practices or for other operational, legal, or
-              regulatory reasons. We will notify you of any material changes by
-              posting the new privacy policy on this page and updating the
-              &quot;Last updated&quot; date at the top of this policy.
-            </p>
-          </div>
-
-          <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              6. Your Rights and Choices
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              As we do not collect any personal data, there is no need for data
-              access, correction, or deletion requests. You have full control
-              over your theme customizations within the extension.
-            </p>
-          </div>
-
-          <div className="bg-secondary/10 p-4 sm:p-6 md:p-8 rounded-lg">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">
-              7. Compliance with Laws
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              While we do not collect personal data, we are committed to
-              complying with applicable data protection laws and regulations,
-              including GDPR and CCPA, to the extent they apply to our
-              operations.
+              We maintain version control and documentation of changes through our
+              GitHub repository. Any updates to the library will be published with
+              appropriate version numbers following semantic versioning principles.
+              Users can choose when to upgrade to newer versions of the library.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              9. Contact Information
+              6. Contact Information
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground mb-4">
-              If you have any questions about these Privacy Policy, please
-              contact us:
+              For questions about the library or to report issues:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gray-200 p-4 rounded-lg flex flex-col items-center">

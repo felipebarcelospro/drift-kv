@@ -59,6 +59,11 @@ jobs:
             node_modules
           key: ${{ runner.os }}-build-${{ github.sha }}
       
+      - name: Update version
+        run: |
+          cd packages/core
+          npm version ${{ needs.setup.outputs.version }} --no-git-tag-version
+      
       - name: Publish to NPM
         run: |
           cd packages/core
@@ -79,13 +84,10 @@ jobs:
         with:
           deno-version: v2
       
-      - name: Restore cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            packages/core/dist
-            node_modules
-          key: ${{ runner.os }}-build-${{ github.sha }}
+      - name: Update version
+        run: |
+          cd packages/core
+          jq '.version = "${{ needs.setup.outputs.version }}"' deno.json > temp.json && mv temp.json deno.json
       
       - name: Publish to Deno
         run: |

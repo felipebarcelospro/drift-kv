@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install @octokit/rest @octokit/graphql @actions/core
+        run: npm install @octokit/rest@19.0.13 @actions/core
 
       - name: Create or Get Project
         id: get-project

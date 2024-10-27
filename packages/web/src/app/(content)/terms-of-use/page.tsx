@@ -29,11 +29,10 @@ export default function TermsOfUse() {
           </Button>
         </Link>
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6 md:mb-8 leading-tight md:max-w-4xl">
-          Terms of Use for Shadcn/UI Theme Creator for Chrome
+          Terms of Use for Drift KV Library
         </h1>
         <p className="text-lg sm:text-xl mb-8 sm:mb-10 md:mb-12 text-muted-foreground">
-          By using the Shadcn/UI Theme Creator for Chrome extension, you agree
-          to comply with and be bound by the following terms and conditions.
+          By using the Drift KV library in your projects, you agree to comply with and be bound by the following terms and conditions.
         </p>
       </section>
 
@@ -41,127 +40,66 @@ export default function TermsOfUse() {
         <div className="grid grid-cols-1 gap-6 sm:gap-8">
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              1. Acceptance of Terms
+              1. MIT License Terms
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              By using the Shadcn/UI Theme Creator for Chrome extension ("the
-              Extension"), you acknowledge that you have read, understood, and
-              agree to be bound by these Terms of Use. If you do not agree to
-              these terms, please refrain from using the Extension.
+              Drift KV is distributed under the MIT License. This means you are free to use, modify, distribute, and sublicense the library, provided you include the original copyright notice and permission notice in all copies or substantial portions of the software.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              2. Use License
+              2. Library Usage
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Felipe Barcelos grants you a personal, non-exclusive,
-              non-transferable, revocable license to use the Extension for its
-              intended purpose. This license is subject to these Terms of Use
-              and does not include the right to modify, distribute, or create
-              derivative works of the Extension without explicit permission.
+              Drift KV is an ORM library designed specifically for Deno KV. You may use it for database operations, real-time subscriptions, job queues, and type-safe queries in your Deno applications. The library is provided as open-source software for the developer community.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              3. Intellectual Property Rights
+              3. No Warranty
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              The Extension, including its code, design, and content, is
-              protected by copyright, trademark, and other laws. The Extension
-              remains the property of Felipe Barcelos. Our trademarks and trade
-              dress may not be used in connection with any product or service
-              without prior written consent.
+              As stated in the MIT License, the library is provided "as is", without warranty of any kind, express or implied. This includes but is not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              4. Limitations
+              4. Contributions
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              You may not use the Extension for any illegal or unauthorized
-              purpose. You agree to comply with all local laws regarding online
-              conduct and acceptable content. You are solely responsible for
-              your use of the Extension.
+              Contributions to Drift KV are welcome. By submitting code changes through pull requests, you agree to license your contributions under the same MIT License terms. Please follow the contribution guidelines in our repository for code standards and submission process.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              5. Disclaimer of Warranties
+              5. Limitation of Liability
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              The Extension is provided "as is" without any warranties,
-              expressed or implied. Felipe Barcelos does not warrant that the
-              Extension will be error-free or uninterrupted. You use the
-              Extension at your own risk.
+              In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the library or the use or other dealings in the library.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              6. Limitation of Liability
+              6. Documentation and Support
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Felipe Barcelos shall not be liable for any indirect, incidental,
-              special, consequential or punitive damages resulting from your use
-              of or inability to use the Extension.
+              Documentation is provided through our GitHub repository. While we strive to maintain comprehensive documentation, support is provided on a best-effort basis through GitHub issues and discussions.
             </p>
           </div>
 
           <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              7. Changes to Terms
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              Felipe Barcelos reserves the right to modify these Terms of Use at
-              any time. We will notify users of any material changes by posting
-              the new Terms of Use on this page. Your continued use of the
-              Extension after any such changes constitutes your acceptance of
-              the new Terms of Use.
-            </p>
-          </div>
-
-          <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              8. Governing Law
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              These Terms shall be governed by and construed in accordance with
-              the laws of Brazil, without regard to its conflict of law
-              provisions.
-            </p>
-          </div>
-
-          <div className="bg-secondary/10 p-6 sm:p-8 rounded-lg">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
-              9. Contact Information
+              7. Contact Information
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground mb-4">
-              If you have any questions about these Terms of Use, please contact
-              us:
+              For questions, bug reports, or contributions, please use our GitHub repository:
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-gray-200 p-4 rounded-lg flex flex-col items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8 mb-2"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                </svg>
-                <a
-                  href="mailto:felipebarcelospro@gmail.com"
-                  className="text-base font-semibold text-center"
-                >
-                  felipebarcelospro@gmail.com
-                </a>
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="bg-gray-200 p-4 rounded-lg flex flex-col items-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
