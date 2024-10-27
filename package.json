@@ -62,5 +62,9 @@
     "prettier": "^3.0.0",
     "turbo": "latest",
     "zod": "^3.23.8"
+  },
+  "esm": {
+    "cjs": true,
+    "mode": "all"
   }
 }
