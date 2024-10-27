@@ -11,9 +11,9 @@ The following table shows which versions of Drift KV are currently supported wit
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability within Drift KV, please send an e-mail to [felipe@example.com](mailto:felipe@example.com). All security vulnerabilities will be promptly addressed by our team.
+If you discover a security vulnerability within Drift KV, please send an e-mail to [felipebarcelospro@gmail.com](mailto:felipebarcelospro@gmail.com). All security vulnerabilities will be promptly addressed by our team.
 
-For a more secure communication channel, you can also reach out to Felipe through Twitter [@your_twitter](https://twitter.com/your_twitter).
+For a more secure communication channel, you can also reach out to Felipe through Twitter [@felipebarcelospro](https://twitter.com/felipebarcelospro).
 
 Please follow these guidelines when reporting:
 
@@ -25,9 +25,11 @@ Please follow these guidelines when reporting:
 
 Drift KV is built with security in mind, featuring:
 
-- Type-safe queries using Zod for schema validation
-- Secure database operations through Deno KV
-- Plugin system with security-focused extensibility
+- Type-safe queries using TypeScript for compile-time validation
+- Secure database operations across Deno KV, Node.js, and Edge environments
+- Extensible plugin system with security-focused architecture
+- Advanced caching with configurable invalidation rules
+- Real-time subscriptions with secure event patterns
 
 ## Preferred Languages
 

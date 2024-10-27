@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'ROADMAP.md'
-      - 'CONTENT_ROADMAP.md'
 
 jobs:
   setup-and-sync:
@@ -18,12 +15,12 @@ jobs:
       repository-projects: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -42,3 +39,13 @@ jobs:
           PROJECT_ID: ${{ steps.get-project.outputs.project_id }}
         run: |
           node .github/scripts/sync-roadmap.js
+
+  check:
+    needs: setup-and-sync
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if all jobs succeeded
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
