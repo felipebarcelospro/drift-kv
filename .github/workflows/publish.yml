@@ -99,6 +99,31 @@ jobs:
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
 
+  publish-jsr:
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Necessário para OIDC
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/core/dist
+            node_modules
+          key: build-${{ github.sha }}
+      
+      - name: Publish to JSR
+        run: |
+          cd packages/core
+          npx jsr publish
+
   create-release:
     needs: [publish-npm, publish-deno]
     runs-on: ubuntu-latest

@@ -1,5 +1,5 @@
-// Using dynamic import for Node 20 compatibility
-const { Octokit } = require('@octokit/graphql');
+const { Octokit } = require('@octokit/rest');
+const fs = require('fs');
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -42,14 +42,14 @@ async function createOrUpdateIssue(task, category) {
   ];
 
   try {
-    const existingIssue = await octokit.issues.listForRepo({
+    const { data: existingIssues } = await octokit.issues.listForRepo({
       owner,
       repo,
       state: 'all',
       labels: [category],
     });
 
-    const issue = existingIssue.data.find(i => i.title === title);
+    const issue = existingIssues.find(i => i.title === title);
 
     if (issue) {
       await octokit.issues.update({
@@ -62,7 +62,7 @@ async function createOrUpdateIssue(task, category) {
         state: task.status === 'completed' ? 'closed' : 'open',
       });
     } else {
-      const newIssue = await octokit.issues.create({
+      const { data: newIssue } = await octokit.issues.create({
         owner,
         repo,
         title,
@@ -70,16 +70,12 @@ async function createOrUpdateIssue(task, category) {
         labels,
       });
 
-      // Add issue to project
-      await octokit.graphql(`
-        mutation {
-          addProjectV2ItemById(input: {projectId: "${projectId}" contentId: "${newIssue.data.node_id}"}) {
-            item {
-              id
-            }
-          }
-        }
-      `);
+      // Add issue to project using REST API
+      await octokit.projects.createCard({
+        project_id: projectId,
+        content_id: newIssue.id,
+        content_type: 'Issue'
+      });
     }
 
   } catch (error) {

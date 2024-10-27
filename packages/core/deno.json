@@ -8,22 +8,9 @@
     "type": "git",
     "url": "https://github.com/felipebarcelospro/drift-kv.git"
   },
-  "bugs": {
-    "url": "https://github.com/felipebarcelospro/drift-kv/issues"
+  "exports": {
+    ".": "./src/index.ts"
   },
-  "homepage": "https://github.com/felipebarcelospro/drift-kv",
-  "keywords": [
-    "deno",
-    "orm", 
-    "kv",
-    "database",
-    "typescript",
-    "key-value",
-    "real-time",
-    "queue",
-    "plugins"
-  ],
-  "exports": "./mod.ts",
   "publish": {
     "include": [
       "README.md",
@@ -33,24 +20,22 @@
     ],
     "exclude": [
       "**/test/**",
-      "**/*.test.ts"
+      "**/*.test.ts",
+      "**/dist/**"
     ]
   },
   "tasks": {
-    "check": "deno check mod.ts",
-    "build": "deno check mod.ts && deno fmt"
+    "check": "deno check ./src/index.ts"
   },
   "fmt": {
-    "include": ["src/"],
-    "exclude": [],
-    "indentWidth": 2,
+    "include": ["src/", "mod.ts"],
+    "exclude": ["**/*.js", "**/*.map"],
     "lineWidth": 80,
     "semiColons": true,
     "singleQuote": false
   },
   "lint": {
-    "include": ["src/"],
-    "exclude": [],
+    "include": ["src/", "mod.ts"],
     "rules": {
       "tags": ["recommended"]
     }

@@ -18,12 +18,11 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "npm run build:npm && npm run build:deno",
+    "build": "npm run build:npm",
     "build:npm": "tsup",
-    "build:deno": "tsc --project tsconfig.deno.json",
     "dev": "tsup --watch",
     "lint": "eslint src/",
-    "clean": "rm -rf dist deno",
+    "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
