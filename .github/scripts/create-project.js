@@ -1,7 +1,5 @@
-const { Octokit } = require('@octokit/rest');
-const { graphql } = require('@octokit/graphql');
-
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+import { core } from '@actions/core';
+import { graphql } from '@octokit/graphql';
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
@@ -57,7 +55,7 @@ async function createOrGetProject() {
     });
 
     console.log('Project created successfully');
-    console.log(`::set-output name=project_id::${createProjectV2.projectV2.id}`);
+    core.setOutput('project_id', createProjectV2.projectV2.id);
 
   } catch (error) {
     console.error('Error:', error.message);
