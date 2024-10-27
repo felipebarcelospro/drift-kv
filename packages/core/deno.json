@@ -1,0 +1,64 @@
+{
+  "name": "@drift-kv/core",
+  "version": "0.1.0",
+  "description": "A powerful ORM for Deno KV with integrated support for database operations, real-time subscriptions, task queues, plugin system, and typed queries.",
+  "author": "Felipe Barcelos <felipebarcelospro@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/felipebarcelospro/drift-kv.git"
+  },
+  "bugs": {
+    "url": "https://github.com/felipebarcelospro/drift-kv/issues"
+  },
+  "homepage": "https://github.com/felipebarcelospro/drift-kv",
+  "keywords": [
+    "deno",
+    "orm", 
+    "kv",
+    "database",
+    "typescript",
+    "key-value",
+    "real-time",
+    "queue",
+    "plugins"
+  ],
+  "exports": "./mod.ts",
+  "publish": {
+    "include": [
+      "README.md",
+      "LICENSE",
+      "mod.ts", 
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "**/test/**",
+      "**/*.test.ts"
+    ]
+  },
+  "tasks": {
+    "test": "deno test --allow-all",
+    "check": "deno check mod.ts"
+  },
+  "fmt": {
+    "include": ["src/", "test/"],
+    "exclude": [],
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "include": ["src/", "test/"],
+    "exclude": [],
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": false,
+    "lib": ["deno.window"],
+    "types": ["./types.d.ts"]
+  }
+}

@@ -36,7 +36,7 @@
     "queue",
     "plugins"
   ],
-  "author": "Felipe Scherer <felipebarcelospro@gmail.com>",
+  "author": "Felipe Barcelos <felipebarcelospro@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/felipebarcelospro/drift-kv/issues"
