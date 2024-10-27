@@ -1,5 +1,7 @@
-import { core } from '@actions/core';
-import { graphql } from '@octokit/graphql';
+// Using import.meta.require for Node 20 compatibility
+// See: https://github.com/actions/toolkit/issues/1523
+const { graphql } = (typeof require !== 'undefined' ? require : import.meta.require)('@octokit/graphql');
+const core = (typeof require !== 'undefined' ? require : import.meta.require)('@actions/core');
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
@@ -12,7 +14,8 @@ async function createOrGetProject() {
   const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
 
   try {
-    // Primeiro, tenta encontrar o projeto existente
+    console.log('Looking for existing project...');
+    // First, try to find existing project
     const { repository } = await graphqlWithAuth(`
       query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {
@@ -36,7 +39,8 @@ async function createOrGetProject() {
       return;
     }
 
-    // Se não encontrar, cria um novo projeto
+    console.log('Creating new project...');
+    // If not found, create new project
     const { createProjectV2 } = await graphqlWithAuth(`
       mutation($owner: String!, $title: String!) {
         createProjectV2(input: {
@@ -63,4 +67,8 @@ async function createOrGetProject() {
   }
 }
 
-createOrGetProject();
+createOrGetProject().catch(error => {
+  console.error('❌ Unhandled error:');
+  console.error(error);
+  process.exit(1);
+});

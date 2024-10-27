@@ -211,11 +211,6 @@ export const config: Config = {
         "Drift KV provides tools for managing database schema changes and migrations. You can define your schema changes in TypeScript and use Drift's migration system to apply them to your database.",
     },
     {
-      question: "Is Drift KV suitable for large-scale applications?",
-      answer:
-        "Yes, Drift KV is designed to be scalable and performant, making it suitable for both small projects and large-scale applications. Its features like advanced caching and optimized queries help maintain performance as your application grows.",
-    },
-    {
       question: "How can I contribute to Drift KV?",
       answer:
         "We welcome contributions! You can contribute by submitting bug reports, feature requests, or pull requests on our GitHub repository. Check our Contributing Guide for more details on how to get involved.",

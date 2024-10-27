@@ -1,5 +1,6 @@
-import { Octokit } from '@octokit/rest';
-import fs from 'fs';
+// Using import.meta.require for Node 20 compatibility
+// See: https://github.com/actions/toolkit/issues/1523
+const { Octokit } = (typeof require !== 'undefined' ? require : import.meta.require)('@octokit/graphql');
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
