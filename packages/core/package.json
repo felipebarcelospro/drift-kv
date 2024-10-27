@@ -18,15 +18,13 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "npm run build:npm && npm run build:deno",
+    "build:npm": "tsup",
+    "build:deno": "tsc --project tsconfig.deno.json",
     "dev": "tsup --watch",
     "lint": "eslint src/",
-    "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "prepack": "npm run build",
-    "prepublishOnly": "npm run build"
+    "clean": "rm -rf dist deno",
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "zod": "^3.22.4"

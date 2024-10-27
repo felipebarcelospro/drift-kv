@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -12,31 +16,31 @@ jobs:
       version: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
       
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
-      
-      - name: Build packages
-        run: npm run build --filter=@drift-kv/core
-      
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
-      - name: Cache build artifacts
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Build packages
+        run: |
+          cd packages/core
+          npm run build
+      
+      - name: Cache artifacts
         uses: actions/cache@v3
         with:
           path: |
             packages/core/dist
+            packages/core/deno
             node_modules
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          key: build-${{ github.sha }}
 
   publish-npm:
     needs: setup
@@ -57,20 +61,15 @@ jobs:
           path: |
             packages/core/dist
             node_modules
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          key: build-${{ github.sha }}
       
       - name: Update version
-        run: |
-          cd packages/core
-          npm version ${{ needs.setup.outputs.version }} --no-git-tag-version
+        run: cd packages/core && npm version ${{ needs.setup.outputs.version }} --no-git-tag-version
       
       - name: Publish to NPM
-        run: |
-          cd packages/core
-          npm publish --access public
+        run: cd packages/core && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${{ needs.setup.outputs.version }}
 
   publish-deno:
     needs: setup
@@ -84,58 +83,42 @@ jobs:
         with:
           deno-version: v2
       
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: packages/core/deno
+          key: build-${{ github.sha }}
+      
       - name: Update version
         run: |
           cd packages/core
           jq '.version = "${{ needs.setup.outputs.version }}"' deno.json > temp.json && mv temp.json deno.json
       
       - name: Publish to Deno
-        run: |
-          cd packages/core
-          deno publish
+        run: cd packages/core && deno publish
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
 
-  publish-jsr:
-    needs: setup
+  create-release:
+    needs: [publish-npm, publish-deno]
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
       - name: Restore cache
         uses: actions/cache@v3
         with:
           path: |
             packages/core/dist
-            node_modules
-          key: ${{ runner.os }}-build-${{ github.sha }}
+            packages/core/deno
+          key: build-${{ github.sha }}
       
-      - name: Publish to JSR
-        run: |
-          cd packages/core
-          npx jsr publish
-
-  create-release:
-    needs: [publish-npm, publish-deno, publish-jsr]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Restore cache
-        uses: actions/cache@v3
-        with:
-          path: packages/core/dist
-          key: ${{ runner.os }}-build-${{ github.sha }}
-      
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: packages/core/dist/**
+          files: |
+            packages/core/dist/**
+            packages/core/deno/**
           generate_release_notes: true
           body_path: .github/RELEASE_NOTES.md

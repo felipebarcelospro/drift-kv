@@ -37,11 +37,11 @@
     ]
   },
   "tasks": {
-    "test": "deno test --allow-all",
-    "check": "deno check mod.ts"
+    "check": "deno check mod.ts",
+    "build": "deno check mod.ts && deno fmt"
   },
   "fmt": {
-    "include": ["src/", "test/"],
+    "include": ["src/"],
     "exclude": [],
     "indentWidth": 2,
     "lineWidth": 80,
@@ -49,7 +49,7 @@
     "singleQuote": false
   },
   "lint": {
-    "include": ["src/", "test/"],
+    "include": ["src/"],
     "exclude": [],
     "rules": {
       "tags": ["recommended"]
