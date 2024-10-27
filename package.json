@@ -1,7 +1,7 @@
 {
   "name": "drift-kv",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A powerful ORM for Deno KV with integrated support for database operations, real-time subscriptions, task queues, plugin system, and typed queries. Built with TypeScript, it provides a seamless development experience with features like schema validation, migrations, relationships, and advanced caching.",
   "workspaces": [
     "packages/*"
