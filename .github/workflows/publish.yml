@@ -5,55 +5,126 @@ on:
     tags:
       - 'v*'
 
-jobs:  
-  publish:
+jobs:
+  setup:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          registry-url: 'https://registry.npmjs.org/'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
       
       - name: Build packages
-        run: npm run build
+        run: npm run build --filter=@drift-kv/core
       
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/core/dist
+            node_modules
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+  publish-npm:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+      
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/core/dist
+            node_modules
+          key: ${{ runner.os }}-build-${{ github.sha }}
+      
       - name: Publish to NPM
-        run: npm run publish-packages
+        run: |
+          cd packages/core
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
-      
+          VERSION: ${{ needs.setup.outputs.version }}
+
+  publish-deno:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v2
       
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/core/dist
+            node_modules
+          key: ${{ runner.os }}-build-${{ github.sha }}
+      
       - name: Publish to Deno
-        run: deno publish
+        run: |
+          cd packages/core
+          deno publish
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+
+  publish-jsr:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/core/dist
+            node_modules
+          key: ${{ runner.os }}-build-${{ github.sha }}
       
       - name: Publish to JSR
-        run: npx jsr publish
+        run: |
+          cd packages/core
+          npx jsr publish
+
+  create-release:
+    needs: [publish-npm, publish-deno, publish-jsr]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: packages/core/dist
+          key: ${{ runner.os }}-build-${{ github.sha }}
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: packages/*/dist/**
+          files: packages/core/dist/**
           generate_release_notes: true
           body_path: .github/RELEASE_NOTES.md

@@ -1,7 +1,5 @@
-// Using import.meta.require for Node 20 compatibility
-// See: https://github.com/actions/toolkit/issues/1523
-const { graphql } = (typeof require !== 'undefined' ? require : import.meta.require)('@octokit/graphql');
-const core = (typeof require !== 'undefined' ? require : import.meta.require)('@actions/core');
+const { graphql } = require('@octokit/graphql');
+const core = require('@actions/core');
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
