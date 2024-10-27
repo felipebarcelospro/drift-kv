@@ -391,7 +391,7 @@ export class DriftEntity<T extends { id: any }> {
     await this.executePluginIntercepts("beforeExecute", { action, params });
 
     // Retrieve all records for the entity
-    const iterator = this.client.lis({ prefix: [this.name] });
+    const iterator = this.client.list({ prefix: [this.name] });
     let results: T[] = [];
     for await (const res of iterator) {
       results.push(res.value);

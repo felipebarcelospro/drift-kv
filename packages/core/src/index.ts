@@ -17,7 +17,7 @@ export {
   ConnectionError,
   DriftError,
   QueryError,
-  ValidationError,
+  ValidationError
 } from "./errors";
 
 // Export utilities

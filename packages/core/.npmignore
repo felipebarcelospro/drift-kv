@@ -43,3 +43,5 @@ jest.config.js
 tsconfig.json
 turbo.json
 CI_CD.md
+
+deno/
