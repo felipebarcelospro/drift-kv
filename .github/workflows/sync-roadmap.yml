@@ -33,6 +33,8 @@ jobs:
           node .github/scripts/create-project.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
 
       - name: Sync Roadmap
         env:

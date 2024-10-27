@@ -8,8 +8,8 @@ const graphqlWithAuth = graphql.defaults({
 });
 
 async function createOrGetProject() {
-  const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
-  const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+  const owner = process.env.OWNER;
+  const repo = process.env.REPO;
 
   try {
     console.log('Looking for existing project...');

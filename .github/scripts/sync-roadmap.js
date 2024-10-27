@@ -3,8 +3,8 @@ const { Octokit } = require('@octokit/graphql');
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
-const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+const owner = process.env.OWNER;
+const repo = process.env.REPO;
 const projectId = process.env.PROJECT_ID;
 
 async function syncRoadmap() {
