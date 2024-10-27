@@ -1,8 +1,8 @@
 import {
   BackButton,
-  Page,
   PageDescription,
   PageHeader,
+  Page as PageLayout,
   PageTitle,
 } from "@/components/ui/page";
 import { githubService } from "@/lib/github";
@@ -12,28 +12,24 @@ import { ContributorRanking } from "./components/contributor-ranking";
 import { RepoStats } from "./components/repo-stats";
 
 export const metadata: Metadata = {
-  title: "Changelog | Shadcn/UI Theme Creator for Chrome",
+  title: "Changelog | Drift KV",
   description:
-    "View the latest updates, improvements, and contributor information for the Shadcn/UI Theme Creator Chrome extension.",
+    "View the latest updates, improvements, and contributor information for the Drift KV.",
 };
 
-export default async function Layout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function Page() {
   const releases = await githubService.getRepositoryReleases();
   const contributors = await githubService.getRepositoryContributors();
   const repoInfo = await githubService.getRepositoryInfo();
 
   return (
-    <Page className="container max-w-screen-md">
+    <PageLayout className="container max-w-screen-md">
       <PageHeader>
         <BackButton />
         <PageTitle>Changelog & Project Info</PageTitle>
         <PageDescription>
           View the latest updates, improvements, and contributor information for
-          the Shadcn/UI Theme Creator Chrome extension.
+          the Drift KV.
         </PageDescription>
       </PageHeader>
 
@@ -42,6 +38,6 @@ export default async function Layout({
         <ContributorRanking contributors={contributors.slice(0, 5)} />
         <ChangelogList releases={releases} />
       </section>
-    </Page>
+    </PageLayout>
   );
 }

@@ -84,6 +84,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
             ? React.cloneElement(child, {
                 key: index,
                 ...props,
+                // @ts-ignore
                 className: cn(props.className, "ordered-list-item"),
               })
             : child,

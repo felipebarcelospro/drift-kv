@@ -1,31 +1,30 @@
+const { createOpenAI } = require('@ai-sdk/openai');
+const { generateObject } = require('ai');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const chalk = require('chalk');
-const util = require('util');
-const execAsync = util.promisify(require('child_process').exec);
-
-const { execSync } = require('child_process');
-const { generateObject } = require('ai');
-const { createOpenAI } = require('@ai-sdk/openai');
 const { z } = require('zod');
 
-/**
- * Dynamically imports the 'ora' module for creating elegant terminal spinners.
- * If the import fails, a simple fallback is provided to ensure the script continues to function.
- * 
- * @type {Function|Object}
- * @example
- * // Successful import usage:
- * const spinner = ora('Loading...').start();
- * // ... some async operation
- * spinner.succeed('Operation completed');
- * 
- * // Fallback usage (if import fails):
- * const spinner = ora('Loading...').start();
- * // ... some async operation
- * spinner.succeed('Operation completed');
- * // Both cases will work, but the fallback won't display an actual spinner
- */
+// Dynamic imports for ESM modules
+let chalk;
+import('chalk').then(module => {
+  chalk = module.default;
+}).catch(error => {
+  console.error('Failed to import chalk:', error);
+  // Fallback for chalk if import fails
+  chalk = {
+    red: (text) => text,
+    green: (text) => text,
+    yellow: (text) => text,
+    cyan: (text) => text,
+    gray: (text) => text,
+    bold: {
+      cyan: (text) => text,
+      red: (text) => text
+    }
+  };
+});
+
 let ora;
 import('ora').then(module => {
   ora = module.default;
@@ -1012,6 +1011,7 @@ async function main() {
   try {
     await import('ora');
     await import('inquirer');
+    await import('chalk');
     
     const customPushProcess = createCustomPushProcess();
     await customPushProcess.main();

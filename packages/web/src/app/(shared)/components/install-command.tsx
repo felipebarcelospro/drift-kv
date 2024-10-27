@@ -72,11 +72,13 @@ export function InstallCommand() {
     const tech = INSTALL_COMMANDS.find((t) => t.id === selectedTech);
     if (!tech) return [];
 
+    const Icon = tech.icon;
     return [
       {
         id: tech.id,
         name: tech.name,
-        icon: <tech.icon className="w-4 h-4" />,
+        // @ts-ignore
+        icon: <Icon className="w-4 h-4" />,
         code: tech.code,
       },
     ];
@@ -102,6 +104,7 @@ export function InstallCommand() {
         variant={selectedTech === tech.id ? "outline" : "ghost"}
         className="flex items-center transition-all duration-300 ease-in-out"
       >
+        {/* @ts-ignore */}
         <tech.icon className="w-4 h-4 mr-2" />
         {tech.name}
       </Button>

@@ -16,6 +16,7 @@ If you discover a security vulnerability within Drift KV, please send an e-mail 
 For a more secure communication channel, you can also reach out to Felipe through Twitter [@your_twitter](https://twitter.com/your_twitter).
 
 Please follow these guidelines when reporting:
+
 - Provide a clear description of the vulnerability
 - Include steps to reproduce if possible
 - Do not publicly disclose the issue until it has been addressed by our team
@@ -23,6 +24,7 @@ Please follow these guidelines when reporting:
 ## Security Features
 
 Drift KV is built with security in mind, featuring:
+
 - Type-safe queries using Zod for schema validation
 - Secure database operations through Deno KV
 - Plugin system with security-focused extensibility

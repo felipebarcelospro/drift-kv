@@ -21,6 +21,7 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Environment:**
+
 - Deno version:
 - Drift KV version:
 - Operating System:
@@ -28,6 +29,7 @@ A clear and concise description of what you expected to happen.
 
 **Additional context**
 Add any other context about the problem here, such as:
+
 - Any error messages or logs
 - Related configuration settings
 - Previous workarounds attempted

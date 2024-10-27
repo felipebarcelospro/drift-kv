@@ -17,6 +17,7 @@ type TechnologyOption = {
   name: string;
   icon: ReactNode;
   code: string;
+  language: string;
 };
 
 const basicUsageCode = `
@@ -179,6 +180,7 @@ export function QuickSteps() {
         name: "TypeScript",
         icon: <CodeIcon className="w-4 h-4" />,
         code: tabs.find((tab) => tab.id === activeTab)?.code || "",
+        language: "typescript",
       },
     ],
     [activeTab, tabs],
@@ -256,8 +258,9 @@ export function QuickSteps() {
               technologies={INSTALL_COMMANDS.map((command) => ({
                 id: command.id,
                 name: command.name,
-                icon: command.icon({ className: "w-4 h-4" }),
+                icon: command.icon({ className: "w-4 h-4" }) as ReactNode,
                 code: command.code,
+                language: command.id === "deno" ? "typescript" : "bash",
               }))}
             >
               <CodeBlockHeader />

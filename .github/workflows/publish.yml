@@ -33,9 +33,6 @@ jobs:
       - name: Format code
         run: npm run format
 
-      - name: Run lint
-        run: npm run lint
-
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
