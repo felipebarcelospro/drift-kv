@@ -41,6 +41,9 @@ jobs:
   publish-npm:
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -67,6 +70,9 @@ jobs:
   publish-deno:
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v1
@@ -91,6 +97,9 @@ jobs:
   publish-jsr:
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
