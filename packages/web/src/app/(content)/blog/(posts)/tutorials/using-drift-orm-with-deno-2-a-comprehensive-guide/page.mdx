@@ -1,0 +1,183 @@
+# Using Drift KV with Deno 2: A Comprehensive Guide
+
+Deno, the secure runtime for JavaScript and TypeScript, has been gaining traction in the developer community. With the release of Deno 2, it's become an even more powerful platform for building modern applications. In this comprehensive guide, we'll explore how to leverage Drift KV in a Deno 2 environment, taking advantage of its unique features and capabilities.
+## Introduction to Drift KV and Deno 2
+
+Drift KV is a powerful, flexible, and type-safe ORM designed to work seamlessly with modern JavaScript and TypeScript environments. Deno 2, on the other hand, is the latest version of the secure runtime for JavaScript and TypeScript, offering improved performance, enhanced security features, and better compatibility with existing JavaScript ecosystems.
+
+When combined, Drift KV and Deno 2 provide a robust foundation for building scalable, secure, and efficient database-driven applications.
+
+## Setting Up Your Deno 2 Environment
+
+Before we dive into using Drift KV, let's ensure your Deno 2 environment is properly set up:
+
+1. Install Deno 2 by following the official installation guide: https://deno.land/#installation
+
+2. Verify your installation by running:
+   ```
+   deno --version
+   ```
+
+3. Set up your development environment. If you're using Visual Studio Code, install the Deno extension for enhanced support.
+
+## Installing Drift KV in Deno 2
+
+Drift KV can be easily installed and used in a Deno 2 project. Here's how:
+
+1. Create a new Deno project:
+   ```
+   mkdir my-drift-deno-project
+   cd my-drift-deno-project
+   ```
+
+2. Create a `deps.ts` file to manage your dependencies:
+   ```typescript
+   export { Drift } from "https://deno.land/x/drift@v1.0.0/mod.ts";
+   ```
+
+3. In your main application file (e.g., `app.ts`), import Drift KV:
+   ```typescript
+   import { Drift } from "./deps.ts";
+   ```
+
+## Configuring Drift KV for Deno 2
+
+Configuring Drift KV in a Deno 2 environment is straightforward:
+
+```typescript
+import { Drift } from "./deps.ts";
+
+const drift = new Drift({
+  client: await Deno.openKv(),
+  schemas: {
+    // Define your schemas here
+  },
+});
+```
+
+Note that we're using `Deno.openKv()` to create a client for Deno's built-in key-value store.
+
+## Creating and Managing Entities
+
+With Drift KV set up, you can start defining entities:
+
+```typescript
+import { z } from "https://deno.land/x/zod@v3.21.4/mod.ts";
+
+const UserEntity = drift.createEntity({
+  name: "user",
+  schema: z.object({
+    id: z.string().uuid(),
+    name: z.string().min(2),
+    email: z.string().email(),
+    createdAt: z.date(),
+  }),
+});
+```
+
+## Performing CRUD Operations
+
+Drift KV provides a simple and intuitive API for CRUD operations:
+
+```typescript
+// Create a new user
+const newUser = await UserEntity.create({
+  data: {
+    id: crypto.randomUUID(),
+    name: "John Doe",
+    email: "john@example.com",
+    createdAt: new Date(),
+  },
+});
+
+// Read a user
+const user = await UserEntity.findUnique({
+  where: { id: newUser.id },
+});
+
+// Update a user
+const updatedUser = await UserEntity.update({
+  where: { id: newUser.id },
+  data: { name: "Jane Doe" },
+});
+
+// Delete a user
+await UserEntity.delete({
+  where: { id: newUser.id },
+});
+```
+
+## Leveraging Deno 2 Features with Drift KV
+
+Deno 2 introduces several features that can be leveraged when using Drift KV:
+
+### 1. Enhanced Security
+
+Deno's security model requires explicit permissions. When using Drift KV, ensure you grant the necessary permissions:
+
+```
+deno run --allow-read --allow-write --allow-net app.ts
+```
+
+### 2. Built-in Testing
+
+Utilize Deno's built-in testing capabilities to test your Drift KV models:
+
+```typescript
+import { assertEquals } from "https://deno.land/std@0.140.0/testing/asserts.ts";
+
+Deno.test("User CRUD operations", async () => {
+  const user = await UserEntity.create({
+    data: {
+      id: crypto.randomUUID(),
+      name: "Test User",
+      email: "test@example.com",
+      createdAt: new Date(),
+    },
+  });
+
+  assertEquals(user.name, "Test User");
+
+  // Add more assertions for read, update, and delete operations
+});
+```
+
+### 3. Top-Level Await
+
+Deno supports top-level await, which can be useful when initializing Drift KV:
+
+```typescript
+const drift = new Drift({
+  client: await Deno.openKv(),
+  // other configurations...
+});
+
+const users = await drift.entities.user.findMany();
+console.log(users);
+```
+
+## Best Practices and Performance Optimization
+
+1. **Use Deno's caching**: Leverage Deno's caching mechanism to improve load times for Drift KV and its dependencies.
+
+2. **Implement proper error handling**: Utilize Deno's `try-catch` blocks and Drift KV's error types for robust error handling.
+
+3. **Optimize queries**: Use Drift KV's query builders to create efficient database queries.
+
+4. **Leverage Deno's performance APIs**: Use Deno's built-in performance APIs to monitor and optimize your application's performance.
+
+## Troubleshooting Common Issues
+
+1. **Permission errors**: Ensure you're running your Deno application with the necessary permissions for Drift KV to function correctly.
+
+2. **Import errors**: Double-check your import statements and ensure you're using the correct versions of Drift KV and its dependencies.
+
+3. **Type errors**: Make sure your TypeScript configuration is correct and that you're using the latest type definitions for Drift KV.
+
+## Conclusion
+
+Using Drift KV with Deno 2 provides a powerful, type-safe, and efficient way to interact with databases in your Deno applications. By leveraging Deno's security features, built-in testing capabilities, and performance optimizations, you can build robust and scalable applications with ease.
+
+As you continue to explore Drift KV in a Deno 2 environment, remember to stay updated with the latest developments in both Drift KV and Deno. The combination of these technologies offers exciting possibilities for modern web development, and mastering them will undoubtedly enhance your skills as a developer.
+
+Happy coding with Drift KV and Deno 2!

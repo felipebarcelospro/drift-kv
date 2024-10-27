@@ -1,0 +1,111 @@
+# Drift KV Documentation
+
+Welcome to Drift KV! Drift KV is a powerful, flexible, and type-safe ORM designed to simplify database interactions and provide a seamless developer experience.
+
+## Introduction
+
+Drift KV is a robust Object Relational Mapper (ORM) for modern JavaScript and TypeScript projects. Built to support Deno and Node environments, Drift KV helps developers interact with databases efficiently, while maintaining type safety and a rich set of features, including real-time subscriptions, job queues, plugin systems, and type-safe queries.
+
+Drift KV aims to provide an intuitive API, inspired by Prisma and other modern ORMs, but designed to maximize flexibility and performance.
+
+## Getting Started
+
+To get started with Drift KV, follow these steps:
+
+1. Install Drift KV from npm or deno.land.
+2. Create and configure your database connections.
+3. Define entities and use the powerful CRUD API to interact with your database.
+
+Detailed guides are available in the [Getting Started Guide](docs/getting-started-guide.md).
+
+## Features
+
+- **Type-Safe Queries**: Drift KV provides full type safety, ensuring consistent data interactions.
+- **Real-Time Subscriptions**: Subscribe to data changes and react in real-time.
+- **Job Queues**: Built-in support for background processing.
+- **Plugin System**: Customize and extend Drift KV with plugins.
+- **Extensive Hooks**: Hook into lifecycle events like queries, transactions, and connections.
+
+## Installation
+
+### Node.js
+
+Install Drift KV using npm:
+
+```bash
+npm install drift-kv
+```
+
+### Deno
+
+Import Drift KV directly from deno.land:
+
+```typescript
+import { Drift } from "https://deno.land/x/drift/mod.ts";
+```
+
+## Basic Usage
+
+Here is an example of how to set up Drift KV:
+
+```typescript
+import { Drift } from "drift-kv";
+import { z } from "zod";
+
+// Initialize the database client
+const client = Deno.openKv();
+
+// Set up Drift KV instance
+const drift = new Drift({
+  client,
+  schemas: {
+    entities: {
+      user: {
+        name: "user",
+        schema: {
+          id: z.string().uuid(),
+          name: z.string().min(3).max(100),
+          email: z.string().email(),
+        },
+      },
+    },
+  },
+});
+
+// Use CRUD operations
+await drift.entities.user.create({
+  data: {
+    id: "123",
+    name: "Felipe",
+    email: "felipe@example.com",
+  },
+});
+```
+
+For more usage examples, visit the [Basic Usage Guide](docs/basic-usage-guide.md).
+
+## Documentation
+
+- [Getting Started](docs/getting-started-guide.md)
+- [Plugins Guide](docs/plugins-guide.md)
+- [Entity Guide](docs/drift-entity-guide.md)
+- [Advanced Topics](docs/advanced-topics-guide.md)
+
+For complete documentation, visit the [Documentation folder](docs/).
+
+## Community and Contributing
+
+We welcome contributions from the community. For details on how to contribute, please check out our [Contributing Guide](docs/contributing.md).
+
+### Reporting Issues
+
+If you encounter issues or bugs, please [open an issue](https://github.com/your-username/drift/issues).
+
+### Join the Community
+
+- Join us on Slack: [Drift Community](https://drift-community.slack.com)
+- Follow us on Twitter: [@DriftORM](https://twitter.com/driftorm)
+
+## License
+
+Drift KV is open-source software, licensed under the [MIT License](LICENSE).

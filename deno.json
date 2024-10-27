@@ -1,0 +1,45 @@
+{
+  "workspace": [
+    "packages/web/",
+    "packages/core/"
+  ],
+  "imports": {
+    "@drift/": "./packages/",
+    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
+  },
+  "tasks": {
+    "start": "deno run --allow-net --allow-read mod.ts",
+    "test": "deno test",
+    "lint": "deno lint",
+    "format": "deno fmt",
+    "docs": "deno doc --html --out-dir docs",
+    "coverage": "deno test --coverage=coverage",
+    "benchmark": "deno bench",
+    "build": "deno run --allow-read --allow-write scripts/build.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": true,
+    "lib": ["deno.window"]
+  },
+  "lint": {
+    "files": {
+      "include": ["src/"]
+    },
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "files": {
+      "include": ["src/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 80,
+      "indentWidth": 2,
+      "singleQuote": true,
+      "proseWrap": "always"
+    }
+  }
+}

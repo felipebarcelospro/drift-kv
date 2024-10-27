@@ -1,0 +1,251 @@
+# Getting Started with Drift KV
+
+Drift KV is a powerful, type-safe ORM designed for Deno KV and modern TypeScript environments. This guide will help you get started with Drift KV and understand its core concepts.
+
+## Installation
+
+You can install Drift KV using your preferred package manager:
+
+```bash
+# Using npm
+npm install drift-kv
+
+# Using Deno
+import { Drift } from "https://deno.land/x/drift/mod.ts"
+
+# Using Bun
+bun add drift-kv
+```
+
+## Quick Start
+
+Here's a basic example to get you started with Drift KV:
+
+```typescript
+import { Drift } from "drift-kv";
+import { z } from "zod";
+
+// Initialize Deno KV client
+const client = await Deno.openKv();
+
+// Create Drift instance
+const drift = new Drift({
+  client,
+  schemas: {
+    entities: {
+      user: {
+        name: "user",
+        schema: z.object({
+          id: z.string().uuid(),
+          name: z.string().min(3),
+          email: z.string().email(),
+          createdAt: z.date(),
+          updatedAt: z.date(),
+        }),
+      },
+    },
+  },
+  hooks: {
+    beforeConnect: async () => {
+      console.log("Connecting to database...");
+    },
+    afterConnect: async (client) => {
+      console.log("Connected successfully!");
+    },
+    onError: async (error) => {
+      console.error("Database error:", error);
+    },
+  },
+});
+```
+
+## Core Concepts
+
+### 1. Database Connection
+
+Drift KV works with Deno KV as its database backend. The connection is managed through the `Drift` class constructor:
+
+```typescript
+const drift = new Drift({
+  client: await Deno.openKv(),
+  // Additional configuration...
+});
+```
+
+### 2. Schema Definition
+
+Schemas in Drift KV are defined using Zod, providing runtime type safety and validation:
+
+```typescript
+const userSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(3),
+  email: z.string().email(),
+  role: z.enum(["user", "admin"]).default("user"),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+```
+
+### 3. Entity Management
+
+Entities are the core building blocks of Drift KV:
+
+```typescript
+const userEntity = drift.entities.user;
+
+// Create a new user
+const user = await userEntity.create({
+  data: {
+    id: crypto.randomUUID(),
+    name: "John Doe",
+    email: "john@example.com",
+  },
+});
+
+// Query users
+const users = await userEntity.findMany({
+  where: {
+    role: "admin",
+  },
+  select: {
+    id: true,
+    name: true,
+    email: true,
+  },
+});
+```
+
+### 4. Lifecycle Hooks
+
+Drift KV provides various hooks to intercept and modify behavior:
+
+```typescript
+const drift = new Drift({
+  hooks: {
+    beforeConnect: async () => {
+      // Run before database connection
+    },
+    afterConnect: async (client) => {
+      // Run after successful connection
+    },
+    onError: async (error) => {
+      // Handle errors
+    },
+    beforeQuery: async (query) => {
+      // Run before each query
+    },
+    afterQuery: async (result) => {
+      // Run after each query
+    },
+  },
+});
+```
+
+## Basic Operations
+
+### Creating Records
+
+```typescript
+const newUser = await drift.entities.user.create({
+  data: {
+    id: crypto.randomUUID(),
+    name: "Jane Doe",
+    email: "jane@example.com",
+  },
+});
+```
+
+### Querying Records
+
+```typescript
+// Find one user
+const user = await drift.entities.user.findUnique({
+  where: { id: "123" },
+});
+
+// Find many users with filters
+const users = await drift.entities.user.findMany({
+  where: {
+    AND: [
+      { role: "admin" },
+      { email: { contains: "@example.com" } },
+    ],
+  },
+  orderBy: { createdAt: "desc" },
+  take: 10,
+});
+```
+
+### Updating Records
+
+```typescript
+const updatedUser = await drift.entities.user.update({
+  where: { id: "123" },
+  data: {
+    name: "Jane Smith",
+    updatedAt: new Date(),
+  },
+});
+```
+
+### Deleting Records
+
+```typescript
+const deletedUser = await drift.entities.user.delete({
+  where: { id: "123" },
+});
+```
+
+## Error Handling
+
+Drift KV provides built-in error handling through hooks and try-catch blocks:
+
+```typescript
+try {
+  const user = await drift.entities.user.findUnique({
+    where: { id: "non-existent" },
+  });
+} catch (error) {
+  if (error instanceof DriftError) {
+    console.error("Drift specific error:", error.message);
+  } else {
+    console.error("Unexpected error:", error);
+  }
+}
+```
+
+## Best Practices
+
+1. **Type Safety**
+   - Always define proper schemas using Zod
+   - Utilize TypeScript's type inference
+   - Keep your types up to date
+
+2. **Error Handling**
+   - Implement proper error handling using try-catch
+   - Use the built-in error types
+   - Set up error hooks for logging
+
+3. **Connection Management**
+   - Initialize connections early
+   - Handle connection errors gracefully
+   - Close connections when done
+
+4. **Query Optimization**
+   - Use selective queries with `select`
+   - Implement proper filtering with `where`
+   - Use pagination when dealing with large datasets
+
+## Next Steps
+
+- Learn about [Configuration Options](./configuration.md)
+- Explore the [Architecture](./architecture.md)
+- Understand [Entity Management](../entities/basics.md)
+- Implement [Real-time Subscriptions](../real-time/subscriptions.md)
+
+## Need Help?
+
+- Check our [GitHub Issues](https://github.com/felipebarcelospro/drift/issues)
+- Join our [Discord Community](https://discord.gg/drift-orm)
+- Read the [Contributing Guide](../../CONTRIBUTING.md)

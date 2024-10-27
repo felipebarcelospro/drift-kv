@@ -1,0 +1,178 @@
+# Drift Entity Guide
+
+Entities are a fundamental building block in Drift KV, representing models within your application. Entities encapsulate both data and the behaviors that relate to that data, allowing you to define database structures with a high level of abstraction. In this guide, we will go through how to create and use entities in Drift KV.
+
+## Introduction to Entities
+An entity in Drift KV represents a data model with specific fields and properties. Entities can be thought of as tables in a relational database or collections in a NoSQL database.
+
+Entities in Drift:
+- Have **schemas** that define the structure and type of data.
+- Contain **hooks** to allow custom behaviors before or after operations.
+- Are **type-safe**, ensuring consistency and reliability in your data models.
+
+## Creating an Entity
+To create an entity, you need to define a **DriftEntity** object. This object includes the entity's name, schema, hooks, and options.
+
+Here is an example of creating a `User` entity:
+
+```typescript
+import { DriftEntity } from "drift-kv";
+import { z } from "zod";
+
+const UserEntity = new DriftEntity({
+  name: "user",
+  description: "User entity with role-based access control",
+  schema: {
+    id: z.string().uuid(),
+    name: z.string().min(3).max(100),
+    email: z.string().email(),
+    role: z.enum(["admin", "user"]).default("user"),
+  },
+  options: {
+    timestamps: true,
+  },
+  hooks: {
+    beforeCreate: async (data, context) => {
+      console.log("Creating new user:", data);
+    },
+    afterCreate: async (data) => {
+      console.log("User created successfully:", data);
+    },
+    beforeDelete: async (id, context) => {
+      console.log("Deleting user with id:", id);
+    },
+  },
+});
+```
+
+### Key Elements of an Entity
+- **Name and Description**: Every entity must have a unique name and a description that explains its purpose.
+- **Schema**: Defines the fields of the entity using **Zod** for validation.
+- **Options**: Allows additional features like **timestamps** (for automatic creation and update times).
+- **Hooks**: Methods that can be triggered before or after certain actions, such as creating or deleting an entity.
+
+## Entity Configuration Options
+Entities come with several configuration options to customize their behavior:
+
+- **timestamps**: When set to `true`, Drift KV will automatically add `createdAt` and `updatedAt` fields to the entity schema.
+- **indexes**: Define indexes to optimize query performance. These are particularly useful for frequently queried fields.
+
+Example:
+
+```typescript
+options: {
+  timestamps: true,
+  indexes: ["email", "role"],
+},
+```
+
+## Entity Hooks
+Entity hooks provide lifecycle events that you can hook into to run custom logic before or after specific actions.
+
+- **beforeCreate(data, context)**: Called before creating a new entity instance.
+- **afterCreate(data)**: Called after an entity instance is created.
+- **beforeUpdate(data, context)**: Called before updating an entity instance.
+- **afterUpdate(data)**: Called after an entity instance is updated.
+- **beforeDelete(id, context)**: Called before deleting an entity instance.
+- **afterDelete(id)**: Called after an entity instance is deleted.
+
+These hooks are extremely useful for adding custom behaviors, such as validation, logging, or triggering external services.
+
+## CRUD Operations
+Drift entities provide straightforward methods for performing **Create**, **Read**, **Update**, and **Delete** operations. Below is an overview of these methods.
+
+### Create
+The `create()` method is used to add a new record to the database.
+
+```typescript
+const newUser = await UserEntity.create({
+  data: {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+    name: "Felipe",
+    email: "felipe@example.com",
+    role: "user",
+  },
+});
+```
+
+### Read
+The `findOne()` and `findMany()` methods allow you to retrieve records.
+
+```typescript
+const user = await UserEntity.findOne({
+  where: {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+  },
+});
+
+const users = await UserEntity.findMany({
+  where: {
+    role: "user",
+  },
+  orderBy: {
+    createdAt: "desc",
+  },
+  take: 10,
+});
+```
+
+### Update
+The `update()` method is used to modify existing records.
+
+```typescript
+await UserEntity.update({
+  where: {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+  },
+  data: {
+    name: "Felipe Updated",
+  },
+});
+```
+
+### Delete
+The `delete()` method is used to remove records from the database.
+
+```typescript
+await UserEntity.delete({
+  where: {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+  },
+});
+```
+
+## Example Entities
+Here is another example of an entity, `PostEntity`, which is related to the `UserEntity`:
+
+```typescript
+const PostEntity = new DriftEntity({
+  name: "post",
+  description: "Blog post entity",
+  schema: {
+    id: z.string().uuid(),
+    title: z.string().min(5).max(200),
+    content: z.string(),
+    authorId: z.string().uuid(),
+    published: z.boolean().default(false),
+  },
+  options: {
+    timestamps: true,
+    indexes: ["authorId", "published"],
+  },
+  hooks: {
+    beforeCreate: async (data) => {
+      console.log("Creating a new post:", data);
+    },
+    afterCreate: async (data) => {
+      console.log("Post created:", data);
+    },
+  },
+});
+```
+
+## Summary
+Entities are the backbone of Drift KV, allowing you to model and work with your data in a highly structured way. By defining schemas and lifecycle hooks, you can ensure that your data is consistent and that all necessary actions are taken at each step of your application's workflows.
+
+Use entities to create well-defined, reusable data models that streamline your application's development process.
+
+For more detailed examples and additional documentation, please refer to our repository's entities folder and API documentation.

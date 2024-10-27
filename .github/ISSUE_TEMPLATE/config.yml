@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+- name: Feature Request
+  url: https://github.com/felipebarcelospro/drift/discussions/new?category=ideas
+  about: Suggest an idea for this project
+- name: Question
+  url: https://github.com/felipebarcelospro/drift/discussions/new?category=q-a
+  about: Ask a question about this project
+- name: Bug Report
+  url: https://github.com/felipebarcelospro/drift/issues/new?template=bug_report.md
+  about: Create a report to help us improve
+- name: Documentation Issue
+  url: https://github.com/felipebarcelospro/drift/discussions/new?category=documentation
+  about: Report issues with our documentation
+- name: Security Concern
+  url: https://github.com/felipebarcelospro/drift/security/policy
+  about: Report security vulnerabilities

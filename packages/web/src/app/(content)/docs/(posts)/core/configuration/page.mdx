@@ -1,0 +1,330 @@
+# Drift KV Configuration Guide
+
+This guide provides a comprehensive overview of Drift KV's configuration options and how to use them effectively.
+
+## Configuration Overview
+
+The Drift KV configuration is passed to the `Drift` constructor and consists of several key sections:
+
+```typescript
+interface DriftConfig {
+  client: any;                // Database client instance
+  plugins?: DriftPlugin[];    // Array of plugins
+  schemas?: {                 // Schema definitions
+    entities?: { [key: string]: (drift: Drift) => DriftEntity<any> };
+    queues?: { [key: string]: (drift: Drift) => DriftEntity<any> };
+  };
+  hooks?: DriftHooks;        // Lifecycle hooks
+}
+```
+
+## Database Configuration
+
+### Client Setup
+
+```typescript
+// Basic client setup
+const client = await Deno.openKv();
+
+const drift = new Drift({
+  client,
+  // Additional configuration...
+});
+```
+
+### Connection Options
+
+The client connection can be customized with various options:
+
+```typescript
+const client = await Deno.openKv({
+  path: "./my-database",      // Custom database path
+  compression: true,          // Enable compression
+  // Additional KV options...
+});
+```
+
+## Schema Configuration
+
+### Entity Schemas
+
+Define your entity schemas using Zod for type safety and validation:
+
+```typescript
+const drift = new Drift({
+  schemas: {
+    entities: {
+      user: (drift) => new DriftEntity(drift, {
+        name: "user",
+        schema: z.object({
+          id: z.string().uuid(),
+          name: z.string().min(3),
+          email: z.string().email(),
+          role: z.enum(["user", "admin"]).default("user"),
+          createdAt: z.date(),
+          updatedAt: z.date(),
+        }),
+        options: {
+          timestamps: true,
+          indexes: ["email", "role"],
+        },
+      }),
+    },
+  },
+});
+```
+
+### Queue Schemas
+
+Define queue schemas for background processing:
+
+```typescript
+const drift = new Drift({
+  schemas: {
+    queues: {
+      emailQueue: (drift) => new DriftQueue(drift, {
+        name: "email",
+        schema: z.object({
+          to: z.string().email(),
+          subject: z.string(),
+          body: z.string(),
+        }),
+        handler: async (data) => {
+          // Queue processing logic
+        },
+      }),
+    },
+  },
+});
+```
+
+## Lifecycle Hooks
+
+### Available Hooks
+
+Drift KV provides various hooks for different lifecycle events:
+
+```typescript
+interface DriftHooks {
+  beforeConnect?: () => Promise<void>;
+  afterConnect?: (client: any) => Promise<void>;
+  onConnect?: (client: any) => Promise<void>;
+  onEnd?: () => Promise<void>;
+  onError?: (error: Error) => Promise<void>;
+  beforeQuery?: (query: any) => Promise<void>;
+  onQuery?: (query: any) => Promise<void>;
+  afterQuery?: (result: any) => Promise<void>;
+  beforeTransaction?: () => Promise<void>;
+  afterTransaction?: () => Promise<void>;
+}
+```
+
+### Implementing Hooks
+
+Example of implementing various hooks:
+
+```typescript
+const drift = new Drift({
+  hooks: {
+    beforeConnect: async () => {
+      console.log("Initializing database connection...");
+      // Setup connection prerequisites
+    },
+
+    afterConnect: async (client) => {
+      console.log("Database connected successfully");
+      // Initialize post-connection resources
+    },
+
+    onError: async (error) => {
+      console.error("Database error:", error);
+      // Log error to monitoring service
+    },
+
+    beforeQuery: async (query) => {
+      console.log("Executing query:", query);
+      // Validate or modify query
+    },
+
+    afterQuery: async (result) => {
+      console.log("Query result:", result);
+      // Process or transform results
+    },
+
+    beforeTransaction: async () => {
+      console.log("Starting transaction");
+      // Prepare transaction context
+    },
+
+    afterTransaction: async () => {
+      console.log("Transaction completed");
+      // Cleanup transaction resources
+    },
+  },
+});
+```
+
+## Plugin System
+
+### Plugin Configuration
+
+Plugins can be added to extend Drift's functionality:
+
+```typescript
+import { loggerPlugin } from "@drift/logger";
+import { cachePlugin } from "@drift/cache";
+
+const drift = new Drift({
+  plugins: [
+    new loggerPlugin({
+      level: "debug",
+      destination: "console",
+    }),
+    new cachePlugin({
+      storage: "redis",
+      ttl: 3600,
+    }),
+  ],
+});
+```
+
+### Custom Plugin Configuration
+
+Creating and configuring a custom plugin:
+
+```typescript
+const customPlugin = new DriftPlugin({
+  name: "customPlugin",
+  description: "Custom functionality plugin",
+  config: {
+    enabled: true,
+    options: {
+      // Custom options...
+    },
+  },
+  hooks: {
+    onConnect: async (client, context) => {
+      // Plugin connection logic
+    },
+    beforeQuery: async (query, context) => {
+      // Query interception logic
+    },
+  },
+});
+```
+
+## Advanced Configuration
+
+### Entity Options
+
+Configure individual entities with specific options:
+
+```typescript
+new DriftEntity(drift, {
+  name: "user",
+  schema: userSchema,
+  options: {
+    timestamps: true,
+    indexes: ["email", "createdAt"],
+    softDelete: true,
+  },
+  hooks: {
+    beforeCreate: async (data) => {
+      // Pre-creation logic
+    },
+    afterUpdate: async (result) => {
+      // Post-update logic
+    },
+  },
+});
+```
+
+### Queue Options
+
+Configure job queues with specific options:
+
+```typescript
+new DriftQueue(drift, {
+  name: "emailQueue",
+  schema: emailSchema,
+  options: {
+    retryAttempts: 3,
+    timeout: 5000,
+    concurrency: 5,
+  },
+  hooks: {
+    onError: async (error, data) => {
+      // Error handling logic
+    },
+  },
+});
+```
+
+## Environment-Specific Configuration
+
+### Development Configuration
+
+```typescript
+const isDev = process.env.NODE_ENV === "development";
+
+const drift = new Drift({
+  client,
+  hooks: {
+    beforeQuery: isDev ? async (query) => {
+      console.log("DEV MODE - Query:", query);
+    } : undefined,
+    onError: isDev ? async (error) => {
+      console.error("DEV MODE - Error:", error);
+    } : undefined,
+  },
+});
+```
+
+### Production Configuration
+
+```typescript
+const isProd = process.env.NODE_ENV === "production";
+
+const drift = new Drift({
+  client,
+  hooks: {
+    onError: async (error) => {
+      // Send to error monitoring service
+      await sendToErrorMonitoring(error);
+    },
+    afterQuery: isProd ? async (result) => {
+      // Performance monitoring in production
+      await measureQueryPerformance(result);
+    } : undefined,
+  },
+});
+```
+
+## Best Practices
+
+1. **Configuration Organization**
+   - Keep configuration modular and environment-specific
+   - Use environment variables for sensitive information
+   - Implement proper error handling in hooks
+
+2. **Plugin Management**
+   - Only include necessary plugins
+   - Configure plugins according to environment
+   - Monitor plugin performance impact
+
+3. **Schema Design**
+   - Use strict types with Zod
+   - Implement proper validation
+   - Consider indexing strategy
+
+4. **Hook Implementation**
+   - Keep hooks focused and lightweight
+   - Implement proper error handling
+   - Consider performance impact
+
+## Next Steps
+
+- Learn about [Architecture](./architecture.md)
+- Explore [Entity Management](../entities/basics.md)
+- Understand [Plugin Development](../plugins/creating.md)
+- Implement [Real-time Features](../real-time/subscriptions.md)

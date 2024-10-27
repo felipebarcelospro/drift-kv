@@ -1,0 +1,326 @@
+# Validation in Drift KV
+
+Drift KV uses Zod for schema validation, providing a powerful, type-safe way to validate your data at runtime while maintaining excellent TypeScript integration.
+
+## Schema Definition
+
+### Basic Schema
+
+```typescript
+import { z } from "zod";
+import { DriftEntity } from "drift-kv";
+
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: z.object({
+    id: z.string().uuid(),
+    email: z.string().email(),
+    name: z.string().min(2).max(100),
+    age: z.number().min(0).max(120).optional(),
+    role: z.enum(["admin", "user"]).default("user"),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+  }),
+});
+```
+
+### Advanced Validation
+
+```typescript
+const PostEntity = new DriftEntity({
+  name: "post",
+  schema: z.object({
+    id: z.string().uuid(),
+    title: z.string()
+      .min(5, "Title must be at least 5 characters")
+      .max(200, "Title cannot exceed 200 characters"),
+    content: z.string()
+      .min(10, "Content too short")
+      .max(50000, "Content too long"),
+    status: z.enum(["draft", "published", "archived"]),
+    publishedAt: z.date().nullable(),
+    tags: z.array(z.string()).min(1).max(10),
+    metadata: z.object({
+      views: z.number().default(0),
+      likes: z.number().default(0),
+      featured: z.boolean().default(false),
+    }).optional(),
+  }).refine(
+    (data) => {
+      if (data.status === "published" && !data.publishedAt) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Published posts must have a publish date",
+    }
+  ),
+});
+```
+
+## Custom Validators
+
+### Creating Custom Validators
+
+```typescript
+// Custom email validator
+const emailValidator = z.string().email().refine(
+  (email) => {
+    // Custom domain validation
+    const domain = email.split("@")[1];
+    return !["blocked.com", "spam.com"].includes(domain);
+  },
+  {
+    message: "Email domain not allowed",
+  }
+);
+
+// Custom password validator
+const passwordValidator = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
+// Use in entity schema
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: z.object({
+    email: emailValidator,
+    password: passwordValidator,
+    // ... other fields
+  }),
+});
+```
+
+### Async Validation
+
+```typescript
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: z.object({
+    email: z.string().email(),
+    username: z.string().min(3),
+  }).superRefine(async (data, ctx) => {
+    // Check if email is already in use
+    const existingUser = await UserEntity.findUnique({
+      where: { email: data.email },
+    });
+    
+    if (existingUser) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Email already in use",
+        path: ["email"],
+      });
+    }
+
+    // Check if username is available
+    const existingUsername = await UserEntity.findUnique({
+      where: { username: data.username },
+    });
+
+    if (existingUsername) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Username already taken",
+        path: ["username"],
+      });
+    }
+  }),
+});
+```
+
+## Validation Hooks
+
+### Pre-Save Validation
+
+```typescript
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: userSchema,
+  hooks: {
+    beforeCreate: async (data) => {
+      // Additional validation before creation
+      if (data.role === "admin" && !data.adminCode) {
+        throw new ValidationError("Admin code required for admin role");
+      }
+      return data;
+    },
+    beforeUpdate: async (data) => {
+      // Validation before update
+      if (data.status === "banned" && !data.banReason) {
+        throw new ValidationError("Ban reason required when banning user");
+      }
+      return data;
+    },
+  },
+});
+```
+
+### Custom Validation Rules
+
+```typescript
+const PostEntity = new DriftEntity({
+  name: "post",
+  schema: postSchema,
+  hooks: {
+    beforeCreate: async (data) => {
+      // Content moderation
+      const hasProfanity = await checkProfanity(data.content);
+      if (hasProfanity) {
+        throw new ValidationError("Content contains inappropriate language");
+      }
+
+      // SEO validation
+      if (data.status === "published") {
+        if (!data.seoTitle || data.seoTitle.length < 10) {
+          throw new ValidationError("SEO title is required and must be at least 10 characters");
+        }
+        if (!data.seoDescription || data.seoDescription.length < 50) {
+          throw new ValidationError("SEO description is required and must be at least 50 characters");
+        }
+      }
+
+      return data;
+    },
+  },
+});
+```
+
+## Error Handling
+
+### Validation Errors
+
+```typescript
+try {
+  const user = await UserEntity.create({
+    data: {
+      email: "invalid-email",
+      age: -1,
+      role: "superadmin", // Invalid enum value
+    },
+  });
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    // Handle Zod validation errors
+    error.errors.forEach((err) => {
+      console.error(`${err.path.join(".")}: ${err.message}`);
+    });
+  } else if (error instanceof ValidationError) {
+    // Handle custom validation errors
+    console.error(error.message);
+  }
+}
+```
+
+### Custom Error Messages
+
+```typescript
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: z.object({
+    email: z.string({
+      required_error: "Email is required",
+      invalid_type_error: "Email must be a string",
+    }).email("Invalid email format"),
+    
+    age: z.number({
+      required_error: "Age is required",
+      invalid_type_error: "Age must be a number",
+    }).min(0, "Age cannot be negative")
+      .max(120, "Age cannot exceed 120"),
+    
+    role: z.enum(["admin", "user"], {
+      errorMap: (issue, ctx) => {
+        return { message: "Invalid role. Must be either 'admin' or 'user'" };
+      },
+    }),
+  }),
+});
+```
+
+## Type Safety
+
+### Type Inference
+
+```typescript
+// Schema definition
+const userSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  role: z.enum(["admin", "user"]),
+});
+
+// Type inference
+type User = z.infer<typeof userSchema>;
+
+// Type-safe operations
+const createUser = async (data: User) => {
+  return await UserEntity.create({ data });
+};
+
+// TypeScript will catch errors
+createUser({
+  id: "123",           // Error: invalid UUID
+  email: "not-email",  // Error: invalid email
+  role: "guest",       // Error: invalid role
+});
+```
+
+## Best Practices
+
+1. **Schema Organization**
+   ```typescript
+   // Separate schema definitions
+   const addressSchema = z.object({
+     street: z.string(),
+     city: z.string(),
+     country: z.string(),
+   });
+
+   const userSchema = z.object({
+     id: z.string().uuid(),
+     name: z.string(),
+     address: addressSchema,
+   });
+   ```
+
+2. **Reusable Validators**
+   ```typescript
+   const commonValidators = {
+     phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number"),
+     url: z.string().url("Invalid URL"),
+     password: z.string()
+       .min(8, "Password too short")
+       .regex(/[A-Z]/, "Missing uppercase letter")
+       .regex(/[0-9]/, "Missing number"),
+   };
+   ```
+
+3. **Validation Strategy**
+   ```typescript
+   const UserEntity = new DriftEntity({
+     name: "user",
+     schema: userSchema,
+     hooks: {
+       beforeCreate: async (data) => {
+         // 1. Zod schema validation (automatic)
+         // 2. Business logic validation
+         await validateBusinessRules(data);
+         // 3. External service validation
+         await validateWithExternalService(data);
+         return data;
+       },
+     },
+   });
+   ```
+
+## Next Steps
+
+- Learn about [Entity Relationships](./relationships.md)
+- Explore [Querying](./querying.md)
+- Understand [Real-time Features](../real-time/subscriptions.md)
+- Review [Error Handling](../advanced/error-handling.md)

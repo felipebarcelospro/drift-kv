@@ -1,0 +1,313 @@
+# Real-time Subscriptions in Drift KV
+
+Drift KV provides a powerful real-time subscription system through the `DriftWatcher` class, allowing you to monitor and react to changes in your data in real-time.
+
+## Basic Usage
+
+### Watching a Single Entity
+
+```typescript
+import { DriftEntity } from "drift-kv";
+import { z } from "zod";
+
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    email: z.string().email(),
+    status: z.enum(["online", "offline"]),
+  }),
+});
+
+// Watch a specific user
+UserEntity.watch(
+  "user-123", // ID of the user to watch
+  {
+    select: {
+      name: true,
+      status: true,
+    },
+  },
+  (changes) => {
+    console.log("User changed:", changes);
+  }
+);
+```
+
+### Watching Multiple Entities
+
+```typescript
+// Watch all active users
+UserEntity.watchAll(
+  {
+    where: {
+      status: "online",
+    },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  },
+  (users) => {
+    console.log("Active users changed:", users);
+  }
+);
+```
+
+## Watch Parameters
+
+### Select and Include
+
+```typescript
+UserEntity.watchAll(
+  {
+    // Select specific fields
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+    // Include related entities
+    include: {
+      posts: {
+        select: {
+          title: true,
+          status: true,
+        },
+        where: {
+          published: true,
+        },
+      },
+    },
+  },
+  (users) => {
+    console.log("Users with posts changed:", users);
+  }
+);
+```
+
+### Filtering
+
+```typescript
+UserEntity.watchAll(
+  {
+    where: {
+      AND: [
+        { status: "online" },
+        { role: "admin" },
+      ],
+      OR: [
+        { lastActive: { gte: new Date(Date.now() - 3600000) } },
+        { priority: { equals: "high" } },
+      ],
+    },
+  },
+  (users) => {
+    console.log("Active admin users changed:", users);
+  }
+);
+```
+
+### Ordering and Distinct
+
+```typescript
+UserEntity.watchAll(
+  {
+    // Order results
+    orderBy: {
+      lastActive: "desc",
+      name: "asc",
+    },
+    // Get distinct values
+    distinct: ["role", "status"],
+  },
+  (users) => {
+    console.log("Ordered and distinct users:", users);
+  }
+);
+```
+
+## Real-world Examples
+
+### Chat Application
+
+```typescript
+const MessageEntity = new DriftEntity({
+  name: "message",
+  schema: z.object({
+    id: z.string().uuid(),
+    chatId: z.string().uuid(),
+    userId: z.string().uuid(),
+    content: z.string(),
+    createdAt: z.date(),
+  }),
+});
+
+// Watch new messages in a specific chat
+MessageEntity.watchAll(
+  {
+    where: {
+      chatId: "chat-123",
+      createdAt: { 
+        gte: new Date() // Only new messages
+      },
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+          avatar: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  },
+  (messages) => {
+    // Update UI with new messages
+    updateChatUI(messages);
+  }
+);
+```
+
+### Real-time Dashboard
+
+```typescript
+const MetricEntity = new DriftEntity({
+  name: "metric",
+  schema: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    value: z.number(),
+    timestamp: z.date(),
+  }),
+});
+
+// Watch system metrics
+MetricEntity.watchAll(
+  {
+    where: {
+      timestamp: {
+        gte: new Date(Date.now() - 300000), // Last 5 minutes
+      },
+    },
+    orderBy: {
+      timestamp: "desc",
+    },
+    select: {
+      name: true,
+      value: true,
+      timestamp: true,
+    },
+  },
+  (metrics) => {
+    // Update dashboard metrics
+    updateDashboardMetrics(metrics);
+  }
+);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const unsubscribe = UserEntity.watchAll(
+    {
+      where: {
+        status: "online",
+      },
+    },
+    (users) => {
+      console.log("Users updated:", users);
+    }
+  );
+
+  // Later, unsubscribe to stop watching
+  unsubscribe();
+} catch (error) {
+  if (error instanceof DriftError) {
+    console.error("Watcher error:", error.message);
+  }
+}
+```
+
+## Performance Considerations
+
+### Optimizing Watchers
+
+1. **Selective Fields**
+```typescript
+// Good: Select only needed fields
+UserEntity.watchAll(
+  {
+    select: {
+      id: true,
+      status: true,
+    },
+  },
+  callback
+);
+
+// Avoid: Watching all fields
+UserEntity.watchAll({}, callback);
+```
+
+2. **Efficient Filtering**
+```typescript
+// Good: Use indexed fields for filtering
+UserEntity.watchAll(
+  {
+    where: {
+      status: "online", // Indexed field
+    },
+  },
+  callback
+);
+```
+
+3. **Resource Management**
+```typescript
+// Clean up watchers when not needed
+const unsubscribe = UserEntity.watchAll(params, callback);
+
+// In React component
+useEffect(() => {
+  const unsubscribe = UserEntity.watchAll(params, callback);
+  return () => unsubscribe();
+}, []);
+```
+
+## Best Practices
+
+1. **Resource Management**
+   - Always unsubscribe when watchers are no longer needed
+   - Limit the number of active watchers
+   - Use selective fields to reduce data transfer
+
+2. **Error Handling**
+   - Implement proper error handling
+   - Handle reconnection scenarios
+   - Log watcher errors appropriately
+
+3. **Performance**
+   - Use efficient filters
+   - Select only necessary fields
+   - Consider batching updates
+
+4. **Type Safety**
+   - Leverage TypeScript types
+   - Validate data with Zod
+   - Handle edge cases
+
+## Next Steps
+
+- Learn about [Entity Relationships](../entities/relationships.md)
+- Explore [Job Queues](../job-queues/index.md)
+- Understand [Plugin System](../plugins/index.md)
+- Review [Performance Optimization](../advanced/performance.md)

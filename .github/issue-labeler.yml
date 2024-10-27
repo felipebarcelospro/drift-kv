@@ -1,0 +1,10 @@
+bug:
+- "(bug|fix|issue|problem)"
+enhancement:
+- "(enhancement|feature|request)"
+documentation:
+- "(docs|documentation)"
+question:
+- "(question|help|support)"
+security:
+- "(security|vulnerability)"

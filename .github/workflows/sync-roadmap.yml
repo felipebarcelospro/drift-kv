@@ -1,0 +1,44 @@
+name: Sync Roadmap
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ROADMAP.md'
+      - 'CONTENT_ROADMAP.md'
+
+jobs:
+  setup-and-sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install @octokit/rest @octokit/graphql
+
+      - name: Create or Get Project
+        id: get-project
+        run: |
+          node .github/scripts/create-project.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Roadmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_ID: ${{ steps.get-project.outputs.project_id }}
+        run: |
+          node .github/scripts/sync-roadmap.js

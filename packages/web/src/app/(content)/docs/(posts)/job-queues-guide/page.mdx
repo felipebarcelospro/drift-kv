@@ -1,0 +1,140 @@
+# Job Queues in Drift KV
+
+Drift KV provides robust support for background processing through job queues, allowing developers to handle long-running tasks and offload work from real-time processes. This guide will walk you through how to use job queues in Drift KV.
+
+## Introduction to Job Queues
+Job queues are useful for tasks that do not need to be processed synchronously, such as sending welcome emails, resizing images, or making HTTP requests to external services. Drift KV's job queue system provides:
+
+- **Type-safe job definitions**
+- **Background processing**
+- **Retry logic** for failed jobs
+- **Hooks for customization**
+
+## Creating a Job Queue
+To create a job queue, you need to define it using the `DriftQueue` class. Below is an example of a basic job queue that handles sending welcome emails to users.
+
+```typescript
+import { DriftQueue } from "drift-kv";
+import { z } from "zod";
+
+const sendWelcomeEmail = new DriftQueue({
+  name: "send-welcome-email",
+  description: "Send welcome email to new users",
+  schema: {
+    id: z.string().uuid(),
+    name: z.string(),
+    email: z.string().email(),
+  },
+  options: {
+    retryAttempts: 3,
+    timeout: 5000,
+  },
+  hooks: {
+    onBeforeEnqueue: async (data) => {
+      console.log("Preparing to enqueue email job:", data);
+    },
+    onStart: async (data) => {
+      console.log("Starting email job processing:", data);
+    },
+    onSuccess: async (data) => {
+      console.log("Email job completed successfully:", data);
+    },
+    onError: async (error) => {
+      console.error("Error processing email job:", error);
+    },
+    onEnd: async () => {
+      console.log("Email job finished.");
+    },
+  },
+  handler: async (data) => {
+    // Your email sending logic goes here
+    console.log(`Sending email to ${data.email}: Welcome, ${data.name}!`);
+  },
+});
+```
+
+### Key Elements
+- **Name and Description**: Identify the queue and describe its purpose.
+- **Schema**: Define the shape of the data the job should handle using Zod, making it type-safe.
+- **Options**: Set retry attempts and timeout settings for the job.
+- **Hooks**: Customize behavior at various stages of the job lifecycle.
+- **Handler**: The actual logic that runs for each job.
+
+## Scheduling Jobs
+Once you have a job queue defined, you can schedule jobs to run. Below is an example of scheduling a job to send a welcome email.
+
+```typescript
+await sendWelcomeEmail.schedule({
+  job: "sendWelcomeEmail",
+  data: {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+    name: "Felipe",
+    email: "felipe@example.com",
+  },
+});
+```
+
+- **job**: This must match the name of the job defined in the queue.
+- **data**: The payload for the job, which must conform to the schema.
+
+## Processing Jobs
+To process jobs, you need to call the `process` method. You can configure the number of concurrent workers, timeouts, and worker-level hooks.
+
+```typescript
+await sendWelcomeEmail.process({
+  queues: ["sendWelcomeEmail"],
+  concurrency: 1,
+  timeout: 5000,
+  onWorkerStart: async () => {
+    console.log("Worker started.");
+  },
+  onWorkerEnd: async () => {
+    console.log("Worker finished.");
+  },
+  onWorkerError: async (error) => {
+    console.error("Worker error:", error);
+  },
+  onJobStart: async (job) => {
+    console.log("Starting job processing:", job);
+  },
+});
+```
+
+### Configuration Parameters
+- **Concurrency**: Number of jobs to be processed simultaneously.
+- **Timeout**: Timeout for each job.
+- **Hooks**: You can define hooks to run custom logic when a worker starts, ends, or encounters an error.
+
+## Retry Mechanisms
+Drift KV allows you to configure retry attempts for jobs. The `retryAttempts` option, set in the queue definition, specifies how many times the job should be retried if it fails. By default, if no retry attempts are defined, the job will not be retried.
+
+Example:
+```typescript
+options: {
+  retryAttempts: 3, // The job will be retried up to 3 times before failing.
+  timeout: 5000,    // Timeout for the job execution.
+}
+```
+
+This helps ensure that temporary issues, such as network failures, do not cause jobs to fail permanently.
+
+## Job Queue Configuration
+Drift's job queues are highly configurable, enabling you to tailor the settings to the needs of your application.
+
+### Job Queue Options
+- **Retry Attempts**: Set the number of retries to handle potential failures.
+- **Timeout**: Maximum duration to wait for a job to complete.
+- **Hooks**: Lifecycle hooks for customizing the behavior during different stages.
+- **Concurrency Control**: Manage how many jobs should run concurrently for better resource allocation.
+
+### Example Use-Cases
+- **Sending Notifications**: Offload sending email or SMS notifications.
+- **Background Processing**: Execute computationally expensive tasks in the background.
+- **Data Syncing**: Sync data across different services or databases asynchronously.
+
+## Summary
+Job queues in Drift KV are an essential tool for handling background tasks, offloading non-essential processes from your core application, and ensuring your application runs smoothly without unnecessary delays. By leveraging type-safe definitions, retry mechanisms, and lifecycle hooks, Drift KV provides a powerful, customizable way to manage background tasks.
+
+For more information, refer to the examples folder in our repository and the API documentation.
+
+Happy coding with Drift KV!

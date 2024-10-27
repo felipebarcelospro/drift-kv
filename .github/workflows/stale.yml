@@ -1,0 +1,69 @@
+name: Mark and Close Stale Issues and PRs
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/stale@v8
+        with:
+          # General Settings
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 30
+          days-before-close: 7
+          operations-per-run: 100
+          remove-stale-when-updated: true
+          enable-statistics: true
+
+          # Issue specific settings
+          stale-issue-label: "stale"
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has not had recent activity.
+            
+            If this issue is still relevant, please leave a comment to keep it active.
+            Otherwise, it will be closed in 7 days if no further activity occurs.
+            
+            Thank you for your contributions to Drift KV!
+          close-issue-message: |
+            This issue has been automatically closed because it has not had recent activity.
+            
+            If you believe this issue is still relevant, please feel free to reopen it or create a new one.
+            
+            Thank you for your understanding!
+          exempt-issue-labels: "pinned,security,bug,enhancement,documentation,help wanted"
+
+          # PR specific settings
+          stale-pr-label: "stale"
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has not had recent activity.
+            
+            If this PR is still being worked on, please leave a comment to keep it active.
+            Otherwise, it will be closed in 7 days if no further activity occurs.
+            
+            Some suggestions to move this PR forward:
+            - Respond to review comments
+            - Update the code based on feedback
+            - Rebase with the latest main branch
+            - Ensure all checks are passing
+            
+            Thank you for your contributions to Drift KV!
+          close-pr-message: |
+            This pull request has been automatically closed because it has not had recent activity.
+            
+            If you would like to continue working on this PR, please feel free to reopen it.
+            
+            Thank you for your understanding!
+          exempt-pr-labels: "pinned,security,dependencies"
+          exempt-draft-pr: true
+
+          # Additional settings
+          exempt-all-milestones: true
+          exempt-all-assignees: false

@@ -1,0 +1,18 @@
+core:
+- packages/core/**/*
+
+web:
+- packages/web/**/*
+
+tests:
+- '**/*.test.ts'
+- '**/*.spec.ts'
+
+dependencies:
+- package.json
+- '**/package.json'
+- yarn.lock
+- pnpm-lock.yaml
+
+github-actions:
+- .github/**/*

@@ -1,0 +1,11 @@
+# Global owners
+* @felipebarcelospro
+
+# Workflow files
+.github/workflows/* @felipebarcelospro
+
+# Core package
+packages/core/* @felipebarcelospro
+
+# Web package
+packages/web/* @felipebarcelospro

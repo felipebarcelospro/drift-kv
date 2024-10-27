@@ -1,0 +1,452 @@
+# Entity Relationships in Drift KV
+
+Drift KV provides a powerful system for managing relationships between entities, supporting various types of relationships with type-safe operations.
+
+## Types of Relationships
+
+### One-to-One
+
+```typescript
+import { DriftEntity } from "drift-kv";
+import { z } from "zod";
+
+// User Entity
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    profileId: z.string().uuid().nullable(),
+  }),
+  relations: {
+    profile: {
+      type: "hasOne",
+      entity: "profile",
+      foreignKey: "userId",
+    },
+  },
+});
+
+// Profile Entity
+const ProfileEntity = new DriftEntity({
+  name: "profile",
+  schema: z.object({
+    id: z.string().uuid(),
+    userId: z.string().uuid(),
+    bio: z.string(),
+    avatar: z.string().url(),
+  }),
+  relations: {
+    user: {
+      type: "belongsTo",
+      entity: "user",
+      foreignKey: "userId",
+    },
+  },
+});
+
+// Usage
+const user = await UserEntity.findUnique({
+  where: { id: "123" },
+  include: {
+    profile: true,
+  },
+});
+```
+
+### One-to-Many
+
+```typescript
+// User Entity with Posts
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: userSchema,
+  relations: {
+    posts: {
+      type: "hasMany",
+      entity: "post",
+      foreignKey: "authorId",
+    },
+  },
+});
+
+// Post Entity
+const PostEntity = new DriftEntity({
+  name: "post",
+  schema: z.object({
+    id: z.string().uuid(),
+    title: z.string(),
+    content: z.string(),
+    authorId: z.string().uuid(),
+  }),
+  relations: {
+    author: {
+      type: "belongsTo",
+      entity: "user",
+      foreignKey: "authorId",
+    },
+  },
+});
+
+// Usage
+const userWithPosts = await UserEntity.findUnique({
+  where: { id: "123" },
+  include: {
+    posts: {
+      where: { published: true },
+      orderBy: { createdAt: "desc" },
+    },
+  },
+});
+```
+
+### Many-to-Many
+
+```typescript
+// Post Entity with Tags
+const PostEntity = new DriftEntity({
+  name: "post",
+  schema: postSchema,
+  relations: {
+    tags: {
+      type: "manyToMany",
+      entity: "tag",
+      through: "postTags",
+      foreignKey: "postId",
+      otherKey: "tagId",
+    },
+  },
+});
+
+// Tag Entity
+const TagEntity = new DriftEntity({
+  name: "tag",
+  schema: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+  }),
+  relations: {
+    posts: {
+      type: "manyToMany",
+      entity: "post",
+      through: "postTags",
+      foreignKey: "tagId",
+      otherKey: "postId",
+    },
+  },
+});
+
+// Junction Entity
+const PostTagEntity = new DriftEntity({
+  name: "postTags",
+  schema: z.object({
+    id: z.string().uuid(),
+    postId: z.string().uuid(),
+    tagId: z.string().uuid(),
+  }),
+});
+
+// Usage
+const postWithTags = await PostEntity.findUnique({
+  where: { id: "123" },
+  include: {
+    tags: true,
+  },
+});
+```
+
+## Working with Relationships
+
+### Creating Related Records
+
+```typescript
+// Create user with profile
+const user = await UserEntity.create({
+  data: {
+    name: "John Doe",
+    email: "john@example.com",
+    profile: {
+      create: {
+        bio: "Software Developer",
+        avatar: "https://example.com/avatar.jpg",
+      },
+    },
+  },
+});
+
+// Create post with tags
+const post = await PostEntity.create({
+  data: {
+    title: "My Post",
+    content: "Content here...",
+    authorId: "123",
+    tags: {
+      connect: [
+        { id: "tag1" },
+        { id: "tag2" },
+      ],
+    },
+  },
+});
+```
+
+### Querying Related Records
+
+```typescript
+// Find users with specific post conditions
+const users = await UserEntity.findMany({
+  where: {
+    posts: {
+      some: {
+        published: true,
+        tags: {
+          some: {
+            name: { contains: "typescript" },
+          },
+        },
+      },
+    },
+  },
+  include: {
+    posts: {
+      include: {
+        tags: true,
+      },
+    },
+    profile: true,
+  },
+});
+
+// Complex nested queries
+const posts = await PostEntity.findMany({
+  where: {
+    AND: [
+      {
+        author: {
+          role: "admin",
+        },
+      },
+      {
+        tags: {
+          some: {
+            name: { in: ["tech", "programming"] },
+          },
+        },
+      },
+    ],
+  },
+  include: {
+    author: {
+      include: {
+        profile: true,
+      },
+    },
+    tags: true,
+  },
+});
+```
+
+### Updating Related Records
+
+```typescript
+// Update user and profile
+const updatedUser = await UserEntity.update({
+  where: { id: "123" },
+  data: {
+    name: "John Smith",
+    profile: {
+      update: {
+        bio: "Senior Software Developer",
+      },
+    },
+  },
+});
+
+// Update post tags
+const updatedPost = await PostEntity.update({
+  where: { id: "123" },
+  data: {
+    title: "Updated Title",
+    tags: {
+      disconnect: [{ id: "tag1" }],
+      connect: [{ id: "tag3" }],
+    },
+  },
+});
+```
+
+### Deleting Related Records
+
+```typescript
+// Delete user and related records
+const deletedUser = await UserEntity.delete({
+  where: { id: "123" },
+  include: {
+    posts: true,
+    profile: true,
+  },
+});
+
+// Cascade delete configuration
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: userSchema,
+  relations: {
+    posts: {
+      type: "hasMany",
+      entity: "post",
+      foreignKey: "authorId",
+      onDelete: "CASCADE",
+    },
+    profile: {
+      type: "hasOne",
+      entity: "profile",
+      foreignKey: "userId",
+      onDelete: "CASCADE",
+    },
+  },
+});
+```
+
+## Advanced Relationship Features
+
+### Polymorphic Relationships
+
+```typescript
+// Comment entity with polymorphic relation
+const CommentEntity = new DriftEntity({
+  name: "comment",
+  schema: z.object({
+    id: z.string().uuid(),
+    content: z.string(),
+    commentableId: z.string().uuid(),
+    commentableType: z.enum(["post", "image"]),
+  }),
+  relations: {
+    commentable: {
+      type: "morphTo",
+      types: ["post", "image"],
+    },
+  },
+});
+
+// Usage
+const comments = await CommentEntity.findMany({
+  where: {
+    commentableType: "post",
+    commentableId: "123",
+  },
+  include: {
+    commentable: true,
+  },
+});
+```
+
+### Self-Referential Relationships
+
+```typescript
+// Employee with manager relationship
+const EmployeeEntity = new DriftEntity({
+  name: "employee",
+  schema: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    managerId: z.string().uuid().nullable(),
+  }),
+  relations: {
+    manager: {
+      type: "belongsTo",
+      entity: "employee",
+      foreignKey: "managerId",
+    },
+    subordinates: {
+      type: "hasMany",
+      entity: "employee",
+      foreignKey: "managerId",
+    },
+  },
+});
+
+// Usage
+const employee = await EmployeeEntity.findUnique({
+  where: { id: "123" },
+  include: {
+    manager: true,
+    subordinates: true,
+  },
+});
+```
+
+## Performance Optimization
+
+### Eager Loading
+
+```typescript
+// Efficient eager loading
+const posts = await PostEntity.findMany({
+  include: {
+    author: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
+    tags: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
+  },
+});
+```
+
+### Selective Loading
+
+```typescript
+// Load only necessary relations
+const user = await UserEntity.findUnique({
+  where: { id: "123" },
+  include: {
+    posts: {
+      select: {
+        id: true,
+        title: true,
+      },
+      where: {
+        published: true,
+      },
+      take: 5,
+    },
+  },
+});
+```
+
+## Best Practices
+
+1. **Relationship Design**
+   - Plan your relationships carefully
+   - Use appropriate relationship types
+   - Consider performance implications
+
+2. **Query Optimization**
+   - Use selective loading
+   - Implement proper indexes
+   - Consider batch operations
+
+3. **Data Integrity**
+   - Configure proper cascade behavior
+   - Handle orphaned records
+   - Validate relationship constraints
+
+4. **Type Safety**
+   - Leverage TypeScript's type system
+   - Use Zod for validation
+   - Keep types in sync
+
+## Next Steps
+
+- Explore [Real-time Subscriptions](../real-time/subscriptions.md)
+- Learn about [Querying](./querying.md)
+- Understand [Validation](./validation.md)
+- Review [Performance](../advanced/performance.md)
