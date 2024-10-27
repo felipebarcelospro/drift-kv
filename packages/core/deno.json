@@ -54,11 +54,5 @@
     "rules": {
       "tags": ["recommended"]
     }
-  },
-  "compilerOptions": {
-    "strict": true,
-    "allowJs": false,
-    "lib": ["deno.window"],
-    "types": ["./types.d.ts"]
   }
 }
