@@ -1,12 +1,9 @@
-export const DEFAULT_CONFIG = {
-  retryAttempts: 3,
-  timeout: 30000,
-};
-
 export const ERROR_CODES = {
-  CONNECTION_ERROR: "CONNECTION_ERROR",
-  QUERY_ERROR: "QUERY_ERROR",
-  VALIDATION_ERROR: "VALIDATION_ERROR",
+  DRIFT_CONNECTION_ERROR: "DriftConnectionError",
+  DRIFT_QUERY_ERROR: "DriftQueryError",
+  DRIFT_VALIDATION_ERROR: "DriftValidationError",
+  DRIFT_KEY_ERROR: "DriftKeyError",
+  DRIFT_BATCH_OP_ERROR: "DriftBatchOpError",
 };
 
 export const PLUGIN_EVENTS = {

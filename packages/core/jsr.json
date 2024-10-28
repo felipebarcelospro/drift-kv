@@ -1,0 +1,15 @@
+{
+  "name": "@drift-kv/core",
+  "version": "0.1.0",
+  "exports": "./dist/index.mjs",
+  "publish": {
+    "include": [
+      "LICENSE",
+      "README.md",
+      "dist/**/*.mjs",
+      "dist/**/*.js",
+      "dist/**/*.d.ts",
+      "dist/**/*.d.mts"
+    ]
+  }
+}

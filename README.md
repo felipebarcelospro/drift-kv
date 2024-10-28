@@ -47,8 +47,10 @@ To get a local copy up and running follow these simple steps:
    ```
 3. Initialize Drift KV with your Deno KV client:
    ```typescript
-   import { Drift } from "drift-kv";
+   import { Drift } from "@drift-kv/core";
+   
    const client = Deno.openKv();
+
    const drift = new Drift({ client });
    ```
 

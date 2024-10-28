@@ -3,48 +3,41 @@
  * @module DriftPlugin
  */
 
+import { DriftQueryAction } from "../types";
+
 /**
  * Query action types supported by Drift
+ * @typedef {("create" | "findUnique" | "findMany" | "update" | "delete" | "upsert" | "count" | "aggregate")} QueryAction
  */
-type QueryAction =
-  | "create"
-  | "findUnique"
-  | "findMany"
-  | "update"
-  | "delete"
-  | "upsert"
-  | "count"
-  | "aggregate";
 
 /**
  * Configuration options for a plugin
  * @interface PluginConfig
+ * @property {boolean} enabled - Whether the plugin is enabled
+ * @property {Object} [key: string] - Additional configuration options
  */
 interface PluginConfig {
-  /** Whether the plugin is enabled */
-  enabled: boolean;
-  /** Additional configuration options */
   [key: string]: any;
 }
 
 /**
  * Lifecycle hooks that can be implemented by plugins
  * @interface PluginHooks
+ * @property {function} [onConnect] - Called when database connection is established
+ * @property {function} [onDisconnect] - Called when database connection is closed
+ * @property {function} [beforeExecute] - Called before executing a query
+ * @property {function} [afterExecute] - Called after query execution
+ * @property {function} [onError] - Called when an error occurs
+ * @property {function} [beforeQuery] - Called before executing a query
+ * @property {function} [afterQuery] - Called after query execution
  */
 interface PluginHooks {
-  /** Called when database connection is established */
   onConnect?: (client: any, context: any) => Promise<void>;
-  /** Called when database connection is closed */
   onDisconnect?: () => Promise<void>;
-  /** Called before executing a query */
   beforeExecute?: (params: any) => Promise<void>;
-  /** Called after query execution */
   afterExecute?: (result: any) => Promise<void>;
-  /** Called when an error occurs */
   onError?: (error: Error) => Promise<void>;
-  /** Called before executing a query */
   beforeQuery?: (query: any, context: any) => Promise<void>;
-  /** Called after query execution */
   afterQuery?: (result: any, context: any) => Promise<void>;
 }
 
@@ -82,9 +75,9 @@ export class DriftPlugin {
   }: {
     name: string;
     description: string;
-    config: PluginConfig;
-    hooks: PluginHooks;
-    methods: { [key: string]: Function };
+    config?: PluginConfig;
+    hooks?: PluginHooks;
+    methods?: { [key: string]: Function };
   }) {
     this.name = name;
     this.description = description;
@@ -104,8 +97,9 @@ export class DriftPlugin {
   /**
    * Executes a plugin hook
    * @param {keyof PluginHooks} hookName - Name of hook to execute
-   * @param {any} params - Parameters to pass to hook
-   * @param {any} context - Optional context object
+   * @param {any} [params] - Parameters to pass to hook
+   * @param {any} [context] - Optional context object
+   * @returns {Promise<void>}
    */
   public async executeHook(
     hookName: keyof PluginHooks,
@@ -134,10 +128,11 @@ export class DriftPlugin {
    * Executes a query through the plugin
    * @param {QueryAction} action - Type of query action
    * @param {any} params - Query parameters
-   * @param {any} context - Optional context object
+   * @param {any} [context] - Optional context object
+   * @returns {Promise<any>}
    */
   public async query(
-    action: QueryAction,
+    action: DriftQueryAction,
     params: any,
     context?: any,
   ): Promise<any> {
