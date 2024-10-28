@@ -1,10 +1,29 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { Drift, DriftPlugin } from "../index";
-import { MockDenoKVClient } from "./MockDenoKVClient";
-
+import { InMemoryDenoKv } from './kv-mock';
 describe('DriftPlugin', () => {
-  const mockClient = new MockDenoKVClient();
-  const mockDrift = new Drift({ client: mockClient });
+  let client = new InMemoryDenoKv();
+  let drift = new Drift({
+    client,
+    schemas: {
+      entities: {
+        testEntity: {
+          name: 'testEntity',
+          schema: z.object({
+            id: z.string().uuid().describe('primary'),
+            name: z.string(),
+            age: z.number().optional(),
+          }),
+        },
+      },
+      queues: {},
+    },
+  });
+
+  beforeEach(() => {
+    client.clear();
+  });
 
   it('should initialize the plugin', () => {
     const plugin = new DriftPlugin({
@@ -15,7 +34,7 @@ describe('DriftPlugin', () => {
       methods: {},
     });
 
-    plugin.initialize(mockDrift);
+    plugin.initialize(drift);
 
     expect(plugin.name).toBe('TestPlugin');
     expect(plugin.description).toBe('A test plugin');
@@ -34,9 +53,9 @@ describe('DriftPlugin', () => {
       methods: {},
     });
 
-    await plugin.executeHook('onConnect', mockClient, {});
+    await plugin.executeHook('onConnect', client, {});
 
-    expect(onConnectHook).toHaveBeenCalledWith(mockClient, {});
+    expect(onConnectHook).toHaveBeenCalledWith(client, {});
   });
 
   it('should execute query method with hooks', async () => {
@@ -69,8 +88,12 @@ describe('DriftPlugin', () => {
     });
 
     const drift = new Drift({
-      client: mockClient,
+      client,
       plugins: [plugin],
+      schemas: {
+        entities: {},
+        queues: {},
+      },
     });
 
     expect(drift.plugins).toContain(plugin);

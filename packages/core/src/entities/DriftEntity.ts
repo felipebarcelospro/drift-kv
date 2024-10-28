@@ -1,329 +1,212 @@
-// src/entities/DriftEntity.ts
-
-import { ZodSchema } from "zod";
+import { Kv, KvEntryMaybe } from "@deno/kv";
+import { z } from "zod";
+import { CrudManager } from "../core/CrudManager";
 import { Drift } from "../core/Drift";
 import { DriftPlugin } from "../core/Plugin";
 import { DriftWatcher } from "../core/Watcher";
-
-/**
- * Represents the possible query actions that can be performed on an entity
- * @example
- * type Action = 'create' | 'findUnique' | 'findMany' | 'update' | 'delete' | 'upsert' | 'count' | 'aggregate'
- */
-type QueryAction =
-  | "create"
-  | "findUnique"
-  | "findMany"
-  | "update"
-  | "delete"
-  | "upsert"
-  | "count"
-  | "aggregate";
-
-/**
- * Interface for entity hooks that can be executed before and after queries
- * @example
- * const hooks: EntityHooks<User> = {
- *   beforeQuery: async (params, context) => {
- *     console.log('Before query:', params);
- *   },
- *   afterQuery: async (result, context) => {
- *     console.log('After query:', result);
- *   }
- * }
- */
-interface EntityHooks<T> {
-  beforeQuery?: (params: QueryParams<T>, context: any) => Promise<void>;
-  afterQuery?: (result: any, context: any) => Promise<void>;
-}
-
-/**
- * Configuration options for creating a new entity
- * @example
- * const userEntity = new DriftEntity<User>(drift, {
- *   name: 'User',
- *   description: 'User entity',
- *   schema: userSchema,
- *   options: {
- *     timestamps: true,
- *     indexes: ['email']
- *   },
- *   hooks: {
- *     beforeQuery: async (params, context) => {
- *       // Hook logic
- *     }
- *   }
- * })
- */
-interface EntityOptions<T> {
-  name: string;
-  description?: string;
-  schema: ZodSchema<T>;
-  options?: {
-    timestamps?: boolean;
-    indexes?: string[];
-  };
-  hooks?: EntityHooks<T>;
-}
-
-/**
- * Type for handling single items or arrays of items
- * @example
- * type Users = Enumerable<User> // User | User[]
- */
-type Enumerable<T> = T | T[];
-
-/**
- * Type for constructing where clauses in queries
- * @example
- * const where: WhereInput<User> = {
- *   AND: [
- *     { email: { contains: '@example.com' } },
- *     { age: { gte: 18 } }
- *   ],
- *   OR: [
- *     { role: 'ADMIN' },
- *     { role: 'MODERATOR' }
- *   ],
- *   NOT: { status: 'BANNED' }
- * }
- */
-type WhereInput<T> = {
-  AND?: Enumerable<WhereInput<T>>;
-  OR?: Enumerable<WhereInput<T>>;
-  NOT?: Enumerable<WhereInput<T>>;
-} & {
-  [P in keyof T]?:
-    | T[P]
-    | { equals?: T[P] }
-    | { not?: T[P] }
-    | { in?: T[P][] }
-    | { notIn?: T[P][] }
-    | { lt?: T[P] }
-    | { lte?: T[P] }
-    | { gt?: T[P] }
-    | { gte?: T[P] }
-    | { contains?: string }
-    | { startsWith?: string }
-    | { endsWith?: string };
-};
-
-/**
- * Type for specifying sort order in queries
- * @example
- * const orderBy: OrderByInput<User> = {
- *   createdAt: 'desc',
- *   email: 'asc'
- * }
- */
-type OrderByInput<T> = {
-  [P in keyof T]?: "asc" | "desc";
-};
-
-/**
- * Type for selecting specific fields to return
- * @example
- * const select: SelectInput<User> = {
- *   id: true,
- *   email: true,
- *   profile: true
- * }
- */
-type SelectInput<T> = {
-  [P in keyof T]?: boolean;
-};
-
-/**
- * Type for including related entities in queries
- * @example
- * const include: IncludeInput<User> = {
- *   posts: {
- *     select: { title: true },
- *     where: { published: true },
- *     orderBy: { createdAt: 'desc' },
- *     take: 10
- *   },
- *   profile: true
- * }
- */
-type IncludeInput<T> = {
-  [P in keyof T]?:
-    | boolean
-    | {
-        select?: SelectInput<T[P]>;
-        where?: WhereInput<T[P]>;
-        orderBy?: OrderByInput<T[P]>;
-        skip?: number;
-        take?: number;
-      };
-};
-
-/**
- * Interface for query parameters used in entity operations
- * @example
- * const params: QueryParams<User> = {
- *   action: 'findMany',
- *   where: { age: { gte: 18 } },
- *   select: { id: true, email: true },
- *   include: { posts: true },
- *   orderBy: { createdAt: 'desc' },
- *   take: 10
- * }
- */
-interface QueryParams<T> {
-  action: QueryAction;
-  data?: Partial<T> | Partial<T>[];
-  where?: WhereInput<T>;
-  select?: SelectInput<T>;
-  include?: IncludeInput<T>;
-  orderBy?: OrderByInput<T>;
-  skip?: number;
-  take?: number;
-  cursor?: { id: any };
-  distinct?: Array<keyof T>;
-  [key: string]: any;
-}
+import { DriftError } from "../errors";
+import {
+  DriftCreateAndUpdateResponse,
+  DriftCreateArgs,
+  DriftCreateManyArgs,
+  DriftDeleteResponse,
+  DriftEntityHooks,
+  DriftEntityMethods,
+  DriftEntityOptions,
+  DriftQueryAction,
+  DriftQueryArgs,
+  DriftTableDefinition,
+  DriftUpdateArgs,
+  WithMaybeVersionstamp
+} from "../types";
+import { schemaToKeys } from "../utils";
 
 /**
  * Main entity class that provides CRUD operations and real-time subscriptions
  * @see {@link https://github.com/yourusername/drift/blob/main/README.md#entity Entity Documentation}
- * @example
- * const userEntity = new DriftEntity<User>(drift, {
- *   name: 'User',
- *   schema: userSchema
- * });
- *
- * // Create a user
- * const user = await userEntity.create({
- *   data: { email: 'test@example.com' }
- * });
- *
- * // Find users
- * const users = await userEntity.findMany({
- *   where: { age: { gte: 18 } },
- *   orderBy: { createdAt: 'desc' }
- * });
- *
- * // Watch for changes
- * userEntity.watchAll({
- *   where: { status: 'ACTIVE' }
- * }, (users) => {
- *   console.log('Active users changed:', users);
- * });
  */
-export class DriftEntity<T extends { id: any }> {
-  public name: string;
-  public description?: string;
-  public schema: ZodSchema<T>;
-  public options?: EntityOptions<T>["options"];
-  public hooks?: EntityHooks<T>;
-
+export class DriftEntity<
+  T extends DriftEntityOptions<any>,
+> implements DriftEntityMethods<T> {
+  private name: string;
+  private description?: string;
+  private options?: T['options'];  
+  private hooks?: T['hooks'];
+  private metadata: DriftTableDefinition<T['schema']>;
   private drift: Drift;
-  private client: any;
   private plugins: DriftPlugin[];
   private watcher: DriftWatcher<T>;
+  private kv: Kv;
+  private crudManager: CrudManager;
 
-  constructor(drift: Drift, options: EntityOptions<T>) {
+  constructor(drift: Drift, entity: DriftEntityOptions<any>) {
     this.drift = drift;
-    this.client = drift.client;
     this.plugins = drift.plugins;
-    this.name = options.name;
-    this.description = options.description;
-    this.schema = options.schema;
-    this.options = options.options;
-    this.hooks = options.hooks;
-    this.watcher = new DriftWatcher<T>(this.drift, this);
+    this.name = entity.name;
+    this.description = entity.description;
+    this.hooks = entity.hooks;
+    this.kv = drift.client;
+    this.options = entity.options;
+
+    this.metadata = {
+      schema: entity.schema,
+      relations: entity.relations,
+    };
+
+    this.watcher = new DriftWatcher<T>(this.drift);
+    this.crudManager = new CrudManager(this.kv);
   }
 
   /** ===============================
    * Create Method
    * =============================== */
-  /**
-   * Creates a new entity record
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#create Create Documentation}
-   * @example
-   * const user = await userEntity.create({
-   *   data: {
-   *     email: 'test@example.com',
-   *     name: 'Test User'
-   *   },
-   *   select: {
-   *     id: true,
-   *     email: true
-   *   },
-   *   include: {
-   *     profile: true
-   *   }
-   * });
-   */
-  public async create(params: {
-    data: T;
-    select?: SelectInput<T>;
-    include?: IncludeInput<T>;
-  }) {
-    const { data, select, include } = params;
-    const action: QueryAction = "create";
-
-    // Validate data using Zod
-    const validatedData = this.schema.parse(data);
-
-    // Apply timestamps if enabled
-    if (this.options?.timestamps) {
-      const timestamp = new Date().toISOString();
-      (validatedData as any).createdAt = timestamp;
-      (validatedData as any).updatedAt = timestamp;
-    }
+  public async create(params: DriftCreateArgs<T>) {
+    const { data } = params;
+    const action: DriftQueryAction = "create";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, data: validatedData });
+    await this.executeHook("beforeQuery", { action, data: data });
 
     // Intercept query via plugins
     await this.executePluginIntercepts("beforeExecute", {
       action,
-      data: validatedData,
+      data: data,
     });
 
-    // Save data to Deno KV
-    const key = [this.name, validatedData.id];
-    await this.client.set(key, validatedData);
+    // Save data using CrudManager
+    const result = await this.crudManager.create(
+      this.name,
+      this.metadata,
+      params,
+    );
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", validatedData);
+    await this.executeHook("afterQuery", result);
 
     // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", validatedData);
+    await this.executePluginIntercepts("afterExecute", result);
 
     // Return result with applied select/include
-    return this.applySelectInclude(validatedData, select, include);
+    return result;
+  }
+
+  /** ===============================
+   * Find First Method
+   * =============================== */
+  public async findFirst(params: DriftQueryArgs<T>) {
+    const action: DriftQueryAction = "findFirst";
+
+    // Execute beforeQuery hooks
+    await this.executeHook("beforeQuery", { action, params });
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("beforeExecute", {
+      action,
+      params,
+    });
+
+    // Find data using CrudManager
+    const result = await this.crudManager.findFirst(
+      this.name,
+      this.metadata,
+      params,
+    );
+
+    // Execute afterQuery hooks
+    await this.executeHook("afterQuery", result);
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("afterExecute", result);
+
+    // Return result with applied select/include
+    return result;
+  }
+
+  /** ===============================
+   * Delete Many Method
+   * =============================== */
+  public async deleteMany(params: DriftQueryArgs<T>): Promise<DriftDeleteResponse> {
+    const action: DriftQueryAction = "deleteMany";
+
+    // Execute beforeQuery hooks
+    await this.executeHook("beforeQuery", { action, params });
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("beforeExecute", {
+      action,
+      params,
+    });
+
+    // Delete data using CrudManager
+    await this.crudManager.remove(
+      this.name,
+      this.metadata,
+      params,
+    );
+
+    // Execute afterQuery hooks
+    await this.executeHook("afterQuery", {
+      status: "DELETED",
+    });
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("afterExecute", {
+      status: "DELETED",
+    });
+
+    // Return result
+    return {
+      status: 'DELETED'
+    };
+  }
+
+  /** ===============================
+   * Create Many Method
+   * =============================== */
+  public async createMany<Args extends DriftCreateManyArgs<T>>(params: Args): Promise<DriftCreateAndUpdateResponse<T>[]> {
+    const { data } = params;
+    const action: DriftQueryAction = "createMany";
+
+    // Apply timestamps if enabled
+    if (this.options?.timestamps) {
+      const timestamp = new Date().toISOString();
+      for (const item of data) {
+        (item as any).createdAt = timestamp;
+        (item as any).updatedAt = timestamp;
+      }
+    }
+
+    // Execute beforeQuery hooks
+    await this.executeHook("beforeQuery", { action, data });
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("beforeExecute", {
+      action,
+      data,
+    });
+
+    // Save data using CrudManager
+    const result = await this.crudManager.createMany(
+      this.name,
+      this.metadata,
+      params,
+    );
+
+    // Execute afterQuery hooks
+    await this.executeHook("afterQuery", result);
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("afterExecute", result);
+
+    // Return result with applied select/include
+    return result;
   }
 
   /** ===============================
    * Find Unique Method
    * =============================== */
-  /**
-   * Finds a single entity record by unique identifier
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#findunique FindUnique Documentation}
-   * @example
-   * const user = await userEntity.findUnique({
-   *   where: { id: '123' },
-   *   select: {
-   *     email: true,
-   *     name: true
-   *   },
-   *   include: {
-   *     posts: {
-   *       where: { published: true }
-   *     }
-   *   }
-   * });
-   */
-  public async findUnique(params: {
-    where: { id: any };
-    select?: SelectInput<T>;
-    include?: IncludeInput<T>;
-  }) {
-    const { where, select, include } = params;
-    const action: QueryAction = "findUnique";
+  public async findUnique(params: DriftQueryArgs<T>) {
+    const action: DriftQueryAction = "findUnique";
 
     // Execute beforeQuery hooks
     await this.executeHook("beforeQuery", { action, params });
@@ -331,58 +214,28 @@ export class DriftEntity<T extends { id: any }> {
     // Intercept query via plugins
     await this.executePluginIntercepts("beforeExecute", { action, params });
 
-    // Get data from Deno KV
-    const key = [this.name, where.id];
-    const result = (await this.client.get(key)) as any;
+    // Get data using CrudManager
+    const result = await this.crudManager.findUnique<typeof this.metadata>(
+      this.name,
+      this.metadata,
+      params,
+    );
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", result.value);
+    await this.executeHook("afterQuery", result);
 
     // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", result.value);
+    await this.executePluginIntercepts("afterExecute", result);
 
     // Return result with applied select/include
-    return result.value
-      ? this.applySelectInclude(result.value, select, include)
-      : null;
+    return result ?? null;
   }
 
   /** ===============================
    * Find Many Method
    * =============================== */
-  /**
-   * Finds multiple entity records based on query parameters
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#findmany FindMany Documentation}
-   * @example
-   * const users = await userEntity.findMany({
-   *   where: {
-   *     AND: [
-   *       { age: { gte: 18 } },
-   *       { status: 'ACTIVE' }
-   *     ]
-   *   },
-   *   select: {
-   *     id: true,
-   *     email: true
-   *   },
-   *   orderBy: {
-   *     createdAt: 'desc'
-   *   },
-   *   take: 10,
-   *   skip: 0
-   * });
-   */
-  public async findMany(params: {
-    where?: WhereInput<T>;
-    select?: SelectInput<T>;
-    include?: IncludeInput<T>;
-    orderBy?: OrderByInput<T>;
-    skip?: number;
-    take?: number;
-    cursor?: { id: any };
-    distinct?: Array<keyof T>;
-  }) {
-    const action: QueryAction = "findMany";
+  public async findMany(params: DriftQueryArgs<T>) {
+    const action: DriftQueryAction = "findMany";
 
     // Execute beforeQuery hooks
     await this.executeHook("beforeQuery", { action, params });
@@ -390,30 +243,12 @@ export class DriftEntity<T extends { id: any }> {
     // Intercept query via plugins
     await this.executePluginIntercepts("beforeExecute", { action, params });
 
-    // Retrieve all records for the entity
-    const iterator = this.client.list({ prefix: [this.name] });
-    let results: T[] = [];
-    for await (const res of iterator) {
-      results.push(res.value);
-    }
-
-    // Apply filters
-    if (params.where) {
-      results = this.applyWhere(results, params.where);
-    }
-
-    // Apply distinct
-    if (params.distinct) {
-      results = this.applyDistinct(results, params.distinct);
-    }
-
-    // Apply orderBy
-    if (params.orderBy) {
-      results = this.applyOrderBy(results, params.orderBy);
-    }
-
-    // Apply cursor, skip, take
-    results = this.applyPagination(results, params);
+    // Get records using CrudManager
+    let results = await this.crudManager.findMany<typeof this.metadata>(
+      this.name,
+      this.metadata,
+      params,
+    );
 
     // Execute afterQuery hooks
     await this.executeHook("afterQuery", results);
@@ -421,40 +256,15 @@ export class DriftEntity<T extends { id: any }> {
     // Intercept query via plugins
     await this.executePluginIntercepts("afterExecute", results);
 
-    // Apply select/include
-    return results.map((item) =>
-      this.applySelectInclude(item, params.select, params.include),
-    );
+    // Return results with applied select/include
+    return results;
   }
 
   /** ===============================
    * Update Method
    * =============================== */
-  /**
-   * Updates an existing entity record
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#update Update Documentation}
-   * @example
-   * const updatedUser = await userEntity.update({
-   *   where: { id: '123' },
-   *   data: {
-   *     email: 'newemail@example.com',
-   *     status: 'ACTIVE'
-   *   },
-   *   select: {
-   *     id: true,
-   *     email: true,
-   *     updatedAt: true
-   *   }
-   * });
-   */
-  public async update(params: {
-    where: { id: any };
-    data: Partial<T>;
-    select?: SelectInput<T>;
-    include?: IncludeInput<T>;
-  }) {
-    const { where, data, select, include } = params;
-    const action: QueryAction = "update";
+  public async update(params: DriftUpdateArgs<T>) {
+    const action: DriftQueryAction = "update";
 
     // Execute beforeQuery hooks
     await this.executeHook("beforeQuery", { action, params });
@@ -463,58 +273,96 @@ export class DriftEntity<T extends { id: any }> {
     await this.executePluginIntercepts("beforeExecute", { action, params });
 
     // Get existing data
-    const key = [this.name, where.id];
-    const existing = await this.client.get(key);
-    if (!existing.value) {
+    const existing = await this.crudManager.findUnique<typeof this.metadata>(
+      this.name,
+      this.metadata,
+      params,
+    );
+
+    if (!existing) {
       throw new Error("Record not found");
     }
 
-    // Merge data
-    const updatedData = { ...existing.value, ...data };
-
-    // Validate updated data
-    const validatedData = this.schema.parse(updatedData);
-
-    // Update timestamps if enabled
-    if (this.options?.timestamps) {
-      (validatedData as any).updatedAt = new Date().toISOString();
-    }
-
-    // Save updated data
-    await this.client.set(key, validatedData);
+    // Update data using CrudManager
+    const updated = await this.updateMany({
+      where: { id: existing.id },
+      data: params.data,
+    });
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", validatedData);
+    await this.executeHook("afterQuery", updated);
 
     // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", validatedData);
+    await this.executePluginIntercepts("afterExecute", updated);
 
     // Return result with applied select/include
-    return this.applySelectInclude(validatedData, select, include);
+    return updated[0];
+  }
+
+  /** ===============================
+   * Update Many Method
+   * =============================== */
+  public async updateMany(params: DriftUpdateArgs<T>) {
+    const action: DriftQueryAction = "updateMany";
+
+    // Execute beforeQuery hooks
+    await this.executeHook("beforeQuery", { action, params });
+
+    // Intercept query via plugins
+    await this.executePluginIntercepts("beforeExecute", { action, params });
+
+    const keys = schemaToKeys(
+      this.name,
+      this.metadata.schema as z.ZodObject<z.ZodRawShape, "strip", z.ZodTypeAny, { [x: string]: any; }, { [x: string]: any; }>,
+      params.where ?? [],
+    );
+    const items = await this.crudManager.keyManager.keysToItems(
+      this.kv,
+      this.name,
+      keys,
+      params.where,
+      this.crudManager.keyManager.getIndexPrefixes(
+        this.name,
+        this.metadata.schema,
+      ),
+    );
+
+    if (items.length === 0) {
+      return;
+    }
+
+    try {
+      const updatedItems = items.map((existingItem) => ({
+        key: existingItem.key,
+        value: this.metadata.schema.parse({
+          ...existingItem.value,
+          ...params.data,
+        }),
+        versionstamp: params.data.versionstamp ?? existingItem.versionstamp,
+      }));
+
+      const updatedRecords = await this.crudManager.update(
+        updatedItems as KvEntryMaybe<z.output<typeof this.metadata.schema>>[],
+      );
+
+      // Execute afterQuery hooks
+      await this.executeHook("afterQuery", updatedRecords);
+
+      // Intercept query via plugins
+      await this.executePluginIntercepts("afterExecute", updatedRecords);
+
+      // Return results with applied select/include
+      return updatedRecords;
+    } catch {
+      throw new DriftError(`An error occurred while updating items`);
+    }
   }
 
   /** ===============================
    * Delete Method
    * =============================== */
-  /**
-   * Deletes an entity record
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#delete Delete Documentation}
-   * @example
-   * const deletedUser = await userEntity.delete({
-   *   where: { id: '123' },
-   *   select: {
-   *     id: true,
-   *     email: true
-   *   }
-   * });
-   */
-  public async delete(params: {
-    where: { id: any };
-    select?: SelectInput<T>;
-    include?: IncludeInput<T>;
-  }) {
-    const { where, select, include } = params;
-    const action: QueryAction = "delete";
+  public async delete(params: DriftQueryArgs<T>) {
+    const action: DriftQueryAction = "delete";
 
     // Execute beforeQuery hooks
     await this.executeHook("beforeQuery", { action, params });
@@ -523,23 +371,33 @@ export class DriftEntity<T extends { id: any }> {
     await this.executePluginIntercepts("beforeExecute", { action, params });
 
     // Get existing data
-    const key = [this.name, where.id];
-    const existing = await this.client.get(key);
-    if (!existing.value) {
-      throw new Error("Record not found");
+    const existing = await this.crudManager.findFirst<typeof this.metadata>(
+      this.name,
+      this.metadata,
+      params,
+    );
+    if (!existing) {
+      return null;
     }
 
-    // Delete the record
-    await this.client.delete(key);
+    // Delete record using CrudManager
+    await this.crudManager.remove(this.name, this.metadata, {
+      where: { id: existing.id },
+    });
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", existing.value);
+    await this.executeHook("afterQuery", {
+      id: existing.id,
+      status: "DELETED",
+    });
 
     // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", existing.value);
+    await this.executePluginIntercepts("afterExecute", {
+      id: existing.id,
+      status: "DELETED",
+    });
 
-    // Return deleted record with applied select/include
-    return this.applySelectInclude(existing.value, select, include);
+    return null;
   }
 
   /** ===============================
@@ -547,224 +405,10 @@ export class DriftEntity<T extends { id: any }> {
    * =============================== */
 
   /**
-   * Applies where conditions to filter records
-   * @private
-   */
-  private applyWhere(records: T[], where: WhereInput<T>): T[] {
-    return records.filter((record) => {
-      const checkCondition = (condition: any, value: any): boolean => {
-        if (condition === null) return value === null;
-        if (typeof condition !== "object") return value === condition;
-
-        for (const [operator, operand] of Object.entries(condition)) {
-          switch (operator) {
-            case "equals":
-              if (value !== operand) return false;
-              break;
-            case "not":
-              if (value === operand) return false;
-              break;
-            case "in":
-              if (Array.isArray(operand) && !operand.includes(value))
-                return false;
-              break;
-            case "notIn":
-              if (Array.isArray(operand) && operand.includes(value))
-                return false;
-              break;
-            case "lt":
-              if (typeof operand === "number" && !(value < operand))
-                return false;
-              break;
-            case "lte":
-              if (typeof operand === "number" && !(value <= operand))
-                return false;
-              break;
-            case "gt":
-              if (typeof operand === "number" && !(value > operand))
-                return false;
-              break;
-            case "gte":
-              if (typeof operand === "number" && !(value >= operand))
-                return false;
-              break;
-            case "contains":
-              if (!String(value).includes(String(operand))) return false;
-              break;
-            case "startsWith":
-              if (!String(value).startsWith(String(operand))) return false;
-              break;
-            case "endsWith":
-              if (!String(value).endsWith(String(operand))) return false;
-              break;
-          }
-        }
-        return true;
-      };
-
-      // Handle AND
-      if (where.AND) {
-        const conditions = Array.isArray(where.AND) ? where.AND : [where.AND];
-        if (
-          !conditions.every(
-            (condition) => this.applyWhere([record], condition).length > 0,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      // Handle OR
-      if (where.OR) {
-        const conditions = Array.isArray(where.OR) ? where.OR : [where.OR];
-        if (
-          !conditions.some(
-            (condition) => this.applyWhere([record], condition).length > 0,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      // Handle NOT
-      if (where.NOT) {
-        const conditions = Array.isArray(where.NOT) ? where.NOT : [where.NOT];
-        if (
-          conditions.some(
-            (condition) => this.applyWhere([record], condition).length > 0,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      // Handle direct field conditions
-      for (const key in where) {
-        if (["AND", "OR", "NOT"].includes(key)) continue;
-        if (!checkCondition(where[key], record[key])) return false;
-      }
-
-      return true;
-    });
-  }
-
-  /**
-   * Applies sorting to records
-   * @private
-   */
-  private applyOrderBy(records: T[], orderBy: OrderByInput<T>): T[] {
-    return [...records].sort((a, b) => {
-      for (const [field, direction] of Object.entries(orderBy)) {
-        if (a[field] < b[field]) return direction === "asc" ? -1 : 1;
-        if (a[field] > b[field]) return direction === "asc" ? 1 : -1;
-      }
-      return 0;
-    });
-  }
-
-  /**
-   * Applies pagination to records
-   * @private
-   */
-  private applyPagination(records: T[], params: any): T[] {
-    const { cursor, skip, take } = params;
-    let result = records;
-
-    if (cursor) {
-      const cursorIndex = records.findIndex((r) => r.id === cursor.id);
-      if (cursorIndex !== -1) {
-        result = result.slice(cursorIndex + 1);
-      }
-    }
-
-    if (skip !== undefined) {
-      result = result.slice(skip);
-    }
-
-    if (take !== undefined) {
-      result = take >= 0 ? result.slice(0, take) : result.slice(take);
-    }
-
-    return result;
-  }
-
-  /**
-   * Applies distinct filtering to records
-   * @private
-   */
-  private applyDistinct(records: T[], distinctFields: Array<keyof T>): T[] {
-    const uniqueRecords = new Map<string, T>();
-    for (const record of records) {
-      const key = distinctFields.map((field) => record[field]).join("|");
-      if (!uniqueRecords.has(key)) {
-        uniqueRecords.set(key, record);
-      }
-    }
-    return Array.from(uniqueRecords.values());
-  }
-
-  /**
-   * Applies select and include transformations to records
-   * @private
-   */
-  private applySelectInclude(
-    record: T,
-    select?: SelectInput<T>,
-    include?: IncludeInput<T>,
-  ): any {
-    let result = { ...record };
-
-    // Apply select
-    if (select) {
-      result = Object.keys(select).reduce((acc, key) => {
-        if (select[key]) {
-          acc[key] = result[key];
-        }
-        return acc;
-      }, {} as any);
-    }
-
-    // Apply include (relations)
-    if (include) {
-      for (const [key, value] of Object.entries(include)) {
-        if (typeof value === "object") {
-          // Handle nested select/where/orderBy
-          const relation = result[key];
-          if (Array.isArray(relation)) {
-            result[key] = relation.map((item) =>
-              this.applySelectInclude(item, value.select, undefined),
-            );
-            if (value.where) {
-              result[key] = this.applyWhere(result[key], value.where);
-            }
-            if (value.orderBy) {
-              result[key] = this.applyOrderBy(result[key], value.orderBy);
-            }
-            if (value.skip || value.take) {
-              result[key] = this.applyPagination(result[key], value);
-            }
-          } else if (relation) {
-            result[key] = this.applySelectInclude(
-              relation,
-              value.select,
-              undefined,
-            );
-          }
-        } else if (value) {
-          // Simple include
-          result[key] = record[key];
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /**
    * Executes entity hooks
    * @private
    */
-  private async executeHook(hookName: keyof EntityHooks<T>, params: any) {
+  private async executeHook(hookName: keyof DriftEntityHooks, params: any) {
     if (this.hooks && this.hooks[hookName]) {
       await this.hooks[hookName]!(params, this);
     }
@@ -780,15 +424,10 @@ export class DriftEntity<T extends { id: any }> {
   ) {
     for (const plugin of this.plugins) {
       if (plugin.query) {
-        // Execute plugin query with proper action and params
-        const result = await plugin.query(
-          data.action, // QueryAction from data
-          data, // Query parameters
-          this, // Context is the entity instance
-        );
+        const result = await plugin.query(data.action, data, this);
 
         if (result !== undefined) {
-          return result; // Return any results from plugin query
+          return result;
         }
       }
     }
@@ -800,76 +439,25 @@ export class DriftEntity<T extends { id: any }> {
 
   /**
    * Watch changes on a specific entity record
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#watch Watch Documentation}
-   * @example
-   * userEntity.watch('123', {
-   *   select: { email: true },
-   *   where: { status: 'ACTIVE' }
-   * }, (changes) => {
-   *   console.log('User changed:', changes);
-   * });
+   * @returns An object containing the watcher promise and cancel function
    */
-  public watch(
-    id: any,
-    params: {
-      select?: SelectInput<T>;
-      include?: IncludeInput<T>;
-      where?: WhereInput<T>;
-      orderBy?: OrderByInput<T>;
-    },
-    callback: (changes: any) => void,
-  ) {
-    const key = [this.name, id];
-    this.watcher.watch(key, params, (value) => {
-      const filtered = this.applyWhere([value], params.where || {})[0];
-      if (filtered) {
-        const result = this.applySelectInclude(
-          filtered,
-          params.select,
-          params.include,
-        );
-        callback(result);
-      }
-    });
-  }
-
   /**
-   * Watch changes on all records of this entity
-   * @see {@link https://github.com/yourusername/drift/blob/main/README.md#watchall WatchAll Documentation}
-   * @example
-   * userEntity.watchAll({
-   *   where: { status: 'ACTIVE' },
-   *   orderBy: { createdAt: 'desc' },
-   *   select: { id: true, email: true }
-   * }, (changes) => {
-   *   console.log('Users changed:', changes);
-   * });
+   * Watch changes on a specific entity record
+   * @param id ID of the record to watch
+   * @param params Watch configuration parameters
+   * @param callback Function called with changes
    */
-  public watchAll(
-    params: {
-      select?: SelectInput<T>;
-      include?: IncludeInput<T>;
-      where?: WhereInput<T>;
-      orderBy?: OrderByInput<T>;
-      distinct?: Array<keyof T>;
-    },
-    callback: (changes: any[]) => void,
-  ) {
-    this.watcher.watchAll(params, (records) => {
-      let filteredRecords = [...records];
-      if (params.where) {
-        filteredRecords = this.applyWhere(filteredRecords, params.where);
-      }
-      if (params.distinct) {
-        filteredRecords = this.applyDistinct(filteredRecords, params.distinct);
-      }
-      if (params.orderBy) {
-        filteredRecords = this.applyOrderBy(filteredRecords, params.orderBy);
-      }
-      const results = filteredRecords.map((record) =>
-        this.applySelectInclude(record, params.select, params.include),
-      );
-      callback(results);
-    });
+  public watch(params: {
+    where?: Partial<
+      WithMaybeVersionstamp<z.output<typeof this.metadata.schema>>
+    >;
+    callback: (changes: z.output<typeof this.metadata.schema> | null) => void;
+  }) {
+    return this.watcher.watch(
+      this.name,
+      this.metadata,
+      params,
+      params.callback,
+    );
   }
 }

@@ -247,9 +247,9 @@ export class KeyManager {
    * @param schema - The Zod schema of the table.
    * @returns An array of KvKeyPart representing index prefixes.
    */
-  public getIndexPrefixes<T extends ReturnType<typeof z.object>>(
+  public getIndexPrefixes<T extends DriftTableDefinition>(
     tableName: string,
-    schema: T,
+    schema: T["schema"],
   ): KvKeyPart[] {
     const indexPrefixes = Object.entries(schema.shape).reduce(
       (current, [indexKey, indexValue]) => {

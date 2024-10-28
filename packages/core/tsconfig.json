@@ -1,21 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ESNext",
     "module": "ESNext",
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ESNext", "DOM"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": false,
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "baseUrl": ".",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "allowJs": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/tests/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }

@@ -28,11 +28,10 @@
       "outputs": ["docs/**"]
     },
     "test": {
-      "dependsOn": ["build"],
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": ["build"],
+      "dependsOn": [""],
       "outputs": ["coverage/**"]
     }
   }

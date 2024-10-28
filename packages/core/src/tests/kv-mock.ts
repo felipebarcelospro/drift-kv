@@ -11,6 +11,7 @@ import {
   KvListOptions,
   KvListSelector,
 } from "@deno/kv";
+
 export class InMemoryDenoKv implements Kv {
   private store: Map<
     string,
@@ -283,8 +284,6 @@ export class InMemoryDenoKv implements Kv {
 
     return stream;
   }
-
-  private streamClosed: () => void = () => {};
 
   public clear(): void {
     this.store.clear();

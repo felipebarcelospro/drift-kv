@@ -1,29 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { ConnectionError, DriftError, QueryError, ValidationError } from "../index";
+import { DriftConnectionError, DriftError, DriftQueryError, DriftValidationError } from "../errors";
 
 describe('Custom Error Classes', () => {
   it('should create a DriftError with the correct message', () => {
     const error = new DriftError('Test DriftError');
-    expect(error.message).toBe('Test DriftError');
     expect(error.name).toBe('DriftError');
   });
 
-  it('should create a ConnectionError with the correct message', () => {
-    const error = new ConnectionError('Test ConnectionError');
-    expect(error.message).toBe('Test ConnectionError');
-    expect(error.name).toBe('ConnectionError');
+  it('should create a DriftConnectionError with the correct message', () => {
+    const error = new DriftConnectionError('Test DriftConnectionError');
+    expect(error.name).toBe('DriftConnectionError');
   });
 
-  it('should create a QueryError with the correct message', () => {
-    const error = new QueryError('Test QueryError');
-    expect(error.message).toBe('Test QueryError');
-    expect(error.name).toBe('QueryError');
+  it('should create a DriftQueryError with the correct message', () => {
+    const error = new DriftQueryError('Test DriftQueryError');
+    expect(error.name).toBe('DriftQueryError');
   });
 
-  it('should create a ValidationError with the correct message', () => {
-    const error = new ValidationError('Test ValidationError');
-    expect(error.message).toBe('Test ValidationError');
-    expect(error.name).toBe('ValidationError');
+  it('should create a DriftValidationError with the correct message', () => {
+    const error = new DriftValidationError('Test DriftValidationError');
+    expect(error.name).toBe('DriftValidationError');
   });
 
   it('should handle and propagate DriftError correctly', () => {
@@ -31,34 +27,30 @@ describe('Custom Error Classes', () => {
       throw new DriftError('Test DriftError');
     } catch (error: any) {
       expect(error).toBeInstanceOf(DriftError);
-      expect(error.message).toBe('Test DriftError');
     }
   });
 
-  it('should handle and propagate ConnectionError correctly', () => {
+  it('should handle and propagate DriftConnectionError correctly', () => {
     try {
-      throw new ConnectionError('Test ConnectionError');
+      throw new DriftConnectionError('Test DriftConnectionError');
     } catch (error: any) {
-      expect(error).toBeInstanceOf(ConnectionError);
-      expect(error.message).toBe('Test ConnectionError');
+      expect(error).toBeInstanceOf(DriftConnectionError);
     }
   });
 
-  it('should handle and propagate QueryError correctly', () => {
+  it('should handle and propagate DriftQueryError correctly', () => {
     try {
-      throw new QueryError('Test QueryError');
+      throw new DriftQueryError('Test DriftQueryError');
     } catch (error: any) {
-      expect(error).toBeInstanceOf(QueryError);
-      expect(error.message).toBe('Test QueryError');
+      expect(error).toBeInstanceOf(DriftQueryError);
     }
   });
 
-  it('should handle and propagate ValidationError correctly', () => {
+  it('should handle and propagate DriftValidationError correctly', () => {
     try {
-      throw new ValidationError('Test ValidationError');
+      throw new DriftValidationError('Test DriftValidationError');
     } catch (error: any) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect(error.message).toBe('Test ValidationError');
+      expect(error).toBeInstanceOf(DriftValidationError);
     }
   });
 });

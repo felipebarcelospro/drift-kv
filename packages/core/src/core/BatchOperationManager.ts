@@ -1,6 +1,6 @@
 import { AtomicOperation, Kv } from "@deno/kv";
 import { DriftBatchOpError } from "../errors";
-import { WithVersionstamp } from "../types";
+import { WithTimestamps, WithVersionstamp } from "../types";
 
 const OPERATION_LIMIT = 10;
 
@@ -41,9 +41,12 @@ export class BatchOperationManager<T> {
     itemsToBatch: T[],
     fn: (res: AtomicOperation, item: T) => undefined | unknown,
     opName?: "create" | "update" | "delete" | "read",
-  ): Promise<WithVersionstamp<T>[]> {
+    options?: {
+      timestamps?: boolean;
+    },
+  ): Promise<(WithVersionstamp<T> | WithVersionstamp<WithTimestamps<T>>)[]> {
     const itemBatches: T[][] = [];
-    const itemsWithVersionstamps: WithVersionstamp<T>[] = [];
+    const itemsWithVersionstamps: (WithVersionstamp<T> | WithVersionstamp<WithTimestamps<T>>)[] = [];
 
     // Split items into batches
     for (let i = 0; i < itemsToBatch.length; i += OPERATION_LIMIT) {
@@ -68,12 +71,22 @@ export class BatchOperationManager<T> {
         );
       }
 
-      // Add versionstamp to the batch
+      // Add versionstamp and timestamps to the batch
+      const timestamp = new Date().toISOString();
       for (const item of batch) {
-        itemsWithVersionstamps.push({
-          ...item,
-          versionstamp: commitResult.versionstamp,
-        });
+        if (options?.timestamps) {
+          itemsWithVersionstamps.push({
+            ...item,
+            versionstamp: commitResult.versionstamp,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          } as WithVersionstamp<WithTimestamps<T>>);
+        } else {
+          itemsWithVersionstamps.push({
+            ...item,
+            versionstamp: commitResult.versionstamp,
+          } as WithVersionstamp<T>);
+        }
       }
     }
 

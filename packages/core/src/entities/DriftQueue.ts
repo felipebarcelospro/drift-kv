@@ -7,80 +7,43 @@
  * hooks for job lifecycle events, and plugin integration.
  */
 
-import { ZodSchema } from "zod";
+import { Kv } from "@deno/kv";
+import { z, ZodSchema } from "zod";
 import { Drift } from "../core/Drift";
-import { DriftPlugin } from "../core/Plugin";
+import { Awaitable, DriftQueueHooks, DriftQueueJobParams, DriftQueueOptions } from "../types";
 
-/**
- * Queue lifecycle hooks for customizing behavior at different stages
- */
-interface QueueHooks<T> {
-  /** Called before a job is enqueued */
-  onBeforeEnqueue?: (data: T) => Promise<void>;
-  /** Called when a job starts processing */
-  onStart?: (data: T) => Promise<void>;
-  /** Called when a job completes successfully */
-  onSuccess?: (data: T) => Promise<void>;
-  /** Called when a job encounters an error */
-  onError?: (error: Error, data: T) => Promise<void>;
-  /** Called when job processing ends (success or failure) */
-  onEnd?: () => Promise<void>;
-}
-
-/**
- * Configuration options for creating a new queue
- */
-interface QueueOptions<T> {
-  /** Unique name identifier for the queue */
-  name: string;
-  /** Optional description of the queue's purpose */
-  description?: string;
-  /** Zod schema for validating job data */
-  schema: ZodSchema<T>;
-  /** Additional queue configuration options */
-  options?: {
-    /** Number of retry attempts for failed jobs */
-    retryAttempts?: number;
-    /** Timeout duration for job processing */
-    timeout?: number;
-  };
-  /** Lifecycle hooks for queue events */
-  hooks?: QueueHooks<T>;
-  /** Main job processing function */
-  handler: (data: T) => Promise<void>;
-}
 
 /**
  * DriftQueue class for managing job queues
  * @template T The type of job data
  */
-export class DriftQueue<T> {
+export class DriftQueue<
+  T extends ZodSchema<any>,
+  K extends string = string,
+  O = Awaitable<ReturnType<DriftQueueOptions<T>["handler"]>>
+> {
   public name: string;
   public description?: string;
   public schema: ZodSchema<T>;
-  public options?: QueueOptions<T>["options"];
-  public hooks?: QueueHooks<T>;
+  public options?: DriftQueueOptions<T>["options"];
+  public hooks?: DriftQueueHooks<T, O>;
 
-  private drift: Drift;
-  private client: any;
-  private plugins: DriftPlugin[];
-  private handler: QueueOptions<T>["handler"];
+  private handler: DriftQueueOptions<T>["handler"];
+  private kv: Kv;
 
   /**
    * Creates a new DriftQueue instance
    * @param drift The Drift KV instance
    * @param options Queue configuration options
    */
-  constructor(drift: Drift, options: QueueOptions<T>) {
-    this.drift = drift;
-    this.client = drift.client;
-    this.plugins = drift.plugins;
+  constructor(drift: Drift, options: DriftQueueOptions<T>) {
     this.name = options.name;
     this.description = options.description;
     this.schema = options.schema;
     this.options = options.options;
     this.hooks = options.hooks;
     this.handler = options.handler;
+    this.kv = drift.client;
   }
 
   /** ===============================
@@ -90,73 +53,50 @@ export class DriftQueue<T> {
    * Schedules a new job in the queue
    * @param params Object containing job name and data
    */
-  public async schedule(params: { job: string; data: T }) {
-    const { data } = params;
+  public async schedule(params: {
+    topic: K;
+    data: z.output<T>;
+    options?: { delay?: number };
+  }) {
+    const { topic, data, options } = params;
 
     // Validate data using Zod
     const validatedData = this.schema.parse(data);
 
     // Execute onBeforeEnqueue hook
-    if (this.hooks?.onBeforeEnqueue) {
-      await this.hooks.onBeforeEnqueue(validatedData);
+    if (this.hooks?.onJobBeforeSchedule) {
+      await this.executeHook({
+        hookName: "onJobBeforeSchedule",
+        args: [validatedData],
+      });
     }
-
-    // Intercept before enqueue via plugins
-    await this.executePluginIntercepts("beforeEnqueue", validatedData);
 
     // Enqueue job
-    const key = ["queue", this.name, Date.now().toString()];
-    await this.client.set(key, validatedData);
+    const result = await this.kv.enqueue(
+      {
+        topic: topic,
+        data: validatedData,
+      },
+      options,
+    );
 
-    // Execute onEnd hook
-    if (this.hooks?.onEnd) {
-      await this.hooks.onEnd();
+    // Execute onJobSchedule hook
+    if (this.hooks?.onJobSchedule) {
+      await this.executeHook({
+        hookName: "onJobSchedule",
+        args: [validatedData],
+      });
     }
+
+    return {
+      topic: topic,
+      success: result.ok,
+      versionstamp: result.versionstamp,
+    };
   }
 
-  /** ===============================
-   * Process Method
-   * =============================== */
-  /**
-   * Processes jobs in the queue
-   * @param options Processing configuration options
-   */
-  public async process(options?: {
-    concurrency?: number;
-    timeout?: number;
-    onWorkerStart?: () => Promise<void>;
-    onWorkerEnd?: () => Promise<void>;
-    onWorkerError?: (error: Error) => Promise<void>;
-    onJobStart?: (job: T) => Promise<void>;
-  }) {
-    const concurrency = options?.concurrency || 1;
-
-    // Execute onWorkerStart hook
-    if (options?.onWorkerStart) {
-      await options.onWorkerStart();
-    }
-
-    const iterator = this.client.list({ prefix: ["queue", this.name] });
-
-    const tasks: Promise<void>[] = [];
-    for await (const res of iterator) {
-      const task = this.processJob(res.key, res.value, options);
-      tasks.push(task);
-
-      if (tasks.length >= concurrency) {
-        await Promise.all(tasks);
-        tasks.length = 0;
-      }
-    }
-
-    if (tasks.length > 0) {
-      await Promise.all(tasks);
-    }
-
-    // Execute onWorkerEnd hook
-    if (options?.onWorkerEnd) {
-      await options.onWorkerEnd();
-    }
+  public async registerHooks(hooks: DriftQueueHooks<T>) {
+    this.hooks = hooks;
   }
 
   /** ===============================
@@ -165,97 +105,81 @@ export class DriftQueue<T> {
 
   /**
    * Processes a single job
-   * @param key The job's key in the queue
    * @param data The job data
    * @param options Processing options for the job
    */
-  private async processJob(
-    key: any[],
-    data: T,
-    options?: {
-      timeout?: number;
-      onWorkerError?: (error: Error) => Promise<void>;
-      onJobStart?: (job: T) => Promise<void>;
-    },
+  public async process(
+    input: DriftQueueJobParams<T, O>
   ) {
+    const { data, hooks } = input;
+    console.log("Starting job:", data);
+  
     try {
+      // Execute onJobBeforeSchedule hook
+      if (hooks?.onJobBeforeSchedule) {
+        console.log("Executing onJobBeforeSchedule hook");
+        await this.executeHook({ hookName: "onJobBeforeSchedule", args: [data], workerHooks: hooks });
+      }
+
+      // Execute onJobSchedule hook
+      if (hooks?.onJobSchedule) {
+        console.log("Executing onJobSchedule hook");
+        await this.executeHook({ hookName: "onJobSchedule", args: [data], workerHooks: hooks });
+      }
+
       // Execute onJobStart hook
-      if (options?.onJobStart) {
-        await options.onJobStart(data);
+      if (hooks?.onJobStart) {
+        console.log("Executing onJobStart hook");
+        await this.executeHook({ hookName: "onJobStart", args: [data], workerHooks: hooks });
       }
 
-      // Execute onStart hook
-      if (this.hooks?.onStart) {
-        await this.hooks.onStart(data);
-      }
-
-      // Intercept before job execution via plugins
-      await this.executePluginIntercepts("beforeExecute", data);
-
+      console.log("Executing job handler");
+  
       // Execute job handler
-      await this.handler(data);
-
-      // Intercept after job execution via plugins
-      await this.executePluginIntercepts("afterExecute", data);
-
-      // Execute onSuccess hook
-      if (this.hooks?.onSuccess) {
-        await this.hooks.onSuccess(data);
+      await this.handler(data.data);
+      
+  
+      // Execute onJobEnd hook
+      if (hooks?.onJobEnd) {
+        console.log("Executing onJobEnd hook");
+        await this.executeHook({ hookName: "onJobEnd", args: [data], workerHooks: hooks });
       }
-
-      // Remove job from queue
-      await this.client.delete(key);
     } catch (error) {
-      // Execute onError hook
-      if (this.hooks?.onError) {
-        await this.hooks.onError(error, data);
-      }
-
-      // Handle retries if configured
-      const retryAttempts = this.options?.retryAttempts || 0;
-      const retryKey = [...key, "retries"];
-      const retries = (await this.client.get(retryKey)).value || 0;
-
-      if (retries < retryAttempts) {
-        await this.client.set(retryKey, retries + 1);
-      } else {
-        // Exceeded retry attempts, move job to failed queue or handle accordingly
-        await this.client.delete(key);
-      }
-
-      // Execute onWorkerError hook
-      if (options?.onWorkerError) {
-        await options.onWorkerError(error);
+      // Execute onJobError hook
+      if (hooks?.onJobError) {
+        console.log("Executing onJobError hook");
+        await this.executeHook({ hookName: "onJobError", args: [error, data], workerHooks: hooks });
       }
     } finally {
-      // Execute onEnd hook
-      if (this.hooks?.onEnd) {
-        await this.hooks.onEnd();
+      // Execute onJobEnd hook
+      if (hooks?.onJobEnd) {
+        console.log("Executing onJobEnd hook");
+        await this.executeHook({ hookName: "onJobEnd", args: [data], workerHooks: hooks });
       }
     }
   }
 
   /**
-   * Executes plugin intercepts for queue operations
-   * @param interceptName The name of the intercept to execute
-   * @param data The data to pass to the intercept
+   * Executes a specific hook if it exists
+   * @param hookName The name of the hook to execute
+   * @param args Arguments to pass to the hook
    */
-  private async executePluginIntercepts(
-    interceptName: "beforeExecute" | "afterExecute" | "beforeEnqueue",
-    data: any,
-  ) {
-    for (const plugin of this.plugins) {
-      if (plugin.query) {
-        // Execute plugin query with proper action and params
-        const result = await plugin.query(
-          "create", // Using create as default action for queue
-          data, // Query parameters
-          this, // Context is the queue instance
-        );
+  private async executeHook({
+    hookName,
+    args,
+    workerHooks
+  }: {
+    hookName: string;
+    args: unknown[];
+    workerHooks?: Partial<DriftQueueHooks<T, O>>;
+  }) {
+    const hooks = { ...this.hooks, ...workerHooks };
+    console.log("hooks", hooks);
 
-        if (result !== undefined) {
-          return result; // Return any results from plugin query
-        }
+    if (hooks[hookName]) {
+      const hookFunctions = Array.isArray(hooks[hookName]) ? hooks[hookName] : [hooks[hookName]];
+      for (const hookFunction of hookFunctions) {
+        await (hookFunction as (...args: unknown[]) => Promise<void>)(...args);
       }
     }
   }

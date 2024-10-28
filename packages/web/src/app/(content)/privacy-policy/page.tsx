@@ -34,8 +34,8 @@ export default function PrivacyPolicy() {
           Privacy Policy for {config.projectName}
         </h1>
         <p className="text-lg sm:text-xl mb-8 sm:mb-10 md:mb-12 text-muted-foreground">
-          This policy outlines our practices regarding the {config.projectName} library,
-          an ORM for Deno KV.
+          This policy outlines our practices regarding the {config.projectName}{" "}
+          library, an ORM for Deno KV.
         </p>
       </section>
 
@@ -46,11 +46,13 @@ export default function PrivacyPolicy() {
               1. Library Usage and Data Handling
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              {config.projectName} is an open-source ORM library for Deno KV. As a library,
-              it does not collect, store, or transmit any data itself. All data operations
-              are performed within your application's context using Deno KV as the storage
-              backend. The library provides the tools and interfaces for data manipulation,
-              but the actual data handling is controlled entirely by your application.
+              {config.projectName} is an open-source ORM library for Deno KV. As
+              a library, it does not collect, store, or transmit any data
+              itself. All data operations are performed within your
+              application's context using Deno KV as the storage backend. The
+              library provides the tools and interfaces for data manipulation,
+              but the actual data handling is controlled entirely by your
+              application.
             </p>
           </div>
 
@@ -59,11 +61,11 @@ export default function PrivacyPolicy() {
               2. Data Storage Responsibility
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              When using {config.projectName}, all data storage and management is handled
-              by your application through Deno KV. We do not have access to any data
-              stored or managed using our library. It is your responsibility to ensure
-              proper data handling and compliance with relevant privacy laws and regulations
-              in your application.
+              When using {config.projectName}, all data storage and management
+              is handled by your application through Deno KV. We do not have
+              access to any data stored or managed using our library. It is your
+              responsibility to ensure proper data handling and compliance with
+              relevant privacy laws and regulations in your application.
             </p>
           </div>
 
@@ -72,11 +74,11 @@ export default function PrivacyPolicy() {
               3. Open Source Nature
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              {config.projectName} is an open-source library, similar to Prisma, Zod, or
-              Next Auth. The source code is publicly available and can be audited on
-              GitHub. We maintain transparency about the library's functionality and
-              encourage community contributions while adhering to best practices in
-              software development.
+              {config.projectName} is an open-source library, similar to Prisma,
+              Zod, or Next Auth. The source code is publicly available and can
+              be audited on GitHub. We maintain transparency about the library's
+              functionality and encourage community contributions while adhering
+              to best practices in software development.
             </p>
           </div>
 
@@ -86,10 +88,10 @@ export default function PrivacyPolicy() {
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
               While we strive to maintain secure coding practices in our library
-              implementation, the security of your data depends on how you implement
-              and use {config.projectName} in your application. We recommend following
-              Deno security best practices and implementing appropriate access controls
-              in your application.
+              implementation, the security of your data depends on how you
+              implement and use {config.projectName} in your application. We
+              recommend following Deno security best practices and implementing
+              appropriate access controls in your application.
             </p>
           </div>
 
@@ -98,10 +100,11 @@ export default function PrivacyPolicy() {
               5. Updates and Versioning
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              We maintain version control and documentation of changes through our
-              GitHub repository. Any updates to the library will be published with
-              appropriate version numbers following semantic versioning principles.
-              Users can choose when to upgrade to newer versions of the library.
+              We maintain version control and documentation of changes through
+              our GitHub repository. Any updates to the library will be
+              published with appropriate version numbers following semantic
+              versioning principles. Users can choose when to upgrade to newer
+              versions of the library.
             </p>
           </div>
 

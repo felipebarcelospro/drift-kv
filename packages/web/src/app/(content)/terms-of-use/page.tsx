@@ -32,7 +32,8 @@ export default function TermsOfUse() {
           Terms of Use for Drift KV Library
         </h1>
         <p className="text-lg sm:text-xl mb-8 sm:mb-10 md:mb-12 text-muted-foreground">
-          By using the Drift KV library in your projects, you agree to comply with and be bound by the following terms and conditions.
+          By using the Drift KV library in your projects, you agree to comply
+          with and be bound by the following terms and conditions.
         </p>
       </section>
 
@@ -43,7 +44,10 @@ export default function TermsOfUse() {
               1. MIT License Terms
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Drift KV is distributed under the MIT License. This means you are free to use, modify, distribute, and sublicense the library, provided you include the original copyright notice and permission notice in all copies or substantial portions of the software.
+              Drift KV is distributed under the MIT License. This means you are
+              free to use, modify, distribute, and sublicense the library,
+              provided you include the original copyright notice and permission
+              notice in all copies or substantial portions of the software.
             </p>
           </div>
 
@@ -52,7 +56,11 @@ export default function TermsOfUse() {
               2. Library Usage
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Drift KV is an ORM library designed specifically for Deno KV. You may use it for database operations, real-time subscriptions, job queues, and type-safe queries in your Deno applications. The library is provided as open-source software for the developer community.
+              Drift KV is an ORM library designed specifically for Deno KV. You
+              may use it for database operations, real-time subscriptions, job
+              queues, and type-safe queries in your Deno applications. The
+              library is provided as open-source software for the developer
+              community.
             </p>
           </div>
 
@@ -61,7 +69,10 @@ export default function TermsOfUse() {
               3. No Warranty
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              As stated in the MIT License, the library is provided "as is", without warranty of any kind, express or implied. This includes but is not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement.
+              As stated in the MIT License, the library is provided "as is",
+              without warranty of any kind, express or implied. This includes
+              but is not limited to the warranties of merchantability, fitness
+              for a particular purpose, and noninfringement.
             </p>
           </div>
 
@@ -70,7 +81,11 @@ export default function TermsOfUse() {
               4. Contributions
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Contributions to Drift KV are welcome. By submitting code changes through pull requests, you agree to license your contributions under the same MIT License terms. Please follow the contribution guidelines in our repository for code standards and submission process.
+              Contributions to Drift KV are welcome. By submitting code changes
+              through pull requests, you agree to license your contributions
+              under the same MIT License terms. Please follow the contribution
+              guidelines in our repository for code standards and submission
+              process.
             </p>
           </div>
 
@@ -79,7 +94,10 @@ export default function TermsOfUse() {
               5. Limitation of Liability
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the library or the use or other dealings in the library.
+              In no event shall the authors or copyright holders be liable for
+              any claim, damages or other liability, whether in an action of
+              contract, tort or otherwise, arising from, out of or in connection
+              with the library or the use or other dealings in the library.
             </p>
           </div>
 
@@ -88,7 +106,10 @@ export default function TermsOfUse() {
               6. Documentation and Support
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground">
-              Documentation is provided through our GitHub repository. While we strive to maintain comprehensive documentation, support is provided on a best-effort basis through GitHub issues and discussions.
+              Documentation is provided through our GitHub repository. While we
+              strive to maintain comprehensive documentation, support is
+              provided on a best-effort basis through GitHub issues and
+              discussions.
             </p>
           </div>
 
@@ -97,7 +118,8 @@ export default function TermsOfUse() {
               7. Contact Information
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground mb-4">
-              For questions, bug reports, or contributions, please use our GitHub repository:
+              For questions, bug reports, or contributions, please use our
+              GitHub repository:
             </p>
             <div className="grid grid-cols-1 gap-4">
               <div className="bg-gray-200 p-4 rounded-lg flex flex-col items-center">

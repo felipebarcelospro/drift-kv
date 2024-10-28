@@ -5,12 +5,12 @@ import {
   DriftCreateArgs,
   DriftCreateManyArgs,
   DriftKey,
-  DriftMethods,
   DriftQueryArgs,
   DriftQueryKvOptions,
   DriftTableDefinition,
   WithMaybeVersionstamp,
-  WithVersionstamp,
+  WithTimestamps,
+  WithVersionstamp
 } from "../types";
 import { mergeValueAndVersionstamp, schemaToKeys } from "../utils";
 import { BatchOperationManager } from "./BatchOperationManager";
@@ -23,6 +23,10 @@ import { SearchManager } from "./SearchManager";
  */
 export class CrudManager {
   private kv: Kv;
+  private options?: {
+    timestamps?: boolean;
+  };
+
   public keyManager: KeyManager;
   public relationManager: RelationManager;
   public batchOperationManager: BatchOperationManager<
@@ -34,8 +38,9 @@ export class CrudManager {
    * Creates an instance of CrudManager.
    * @param kv - The key-value store instance.
    */
-  constructor(kv: Kv) {
+  constructor(kv: Kv, options?: { timestamps?: boolean }) {
     this.kv = kv;
+    this.options = options;
     this.searchManager = new SearchManager();
     this.keyManager = new KeyManager(kv, this.searchManager, this);
     this.relationManager = new RelationManager(kv);
@@ -108,7 +113,7 @@ export class CrudManager {
       );
     }
 
-    return result;
+    return result as KvEntryMaybe<z.output<T["schema"]>>[];
   }
 
   /**
@@ -137,6 +142,7 @@ export class CrudManager {
         res.delete(key.kvKey);
       },
       "delete",
+      this.options,
     );
   }
 
@@ -151,11 +157,19 @@ export class CrudManager {
     T extends DriftTableDefinition,
     Item extends z.output<T["schema"]>,
   >(entries: KvEntryMaybe<Item>[]): Promise<WithVersionstamp<Item>[]> {
+    const isTimestampsEnabled = this.options?.timestamps;
+    const timestamp = new Date().toISOString();
+
     const entriesWithVersionstamps =
       await this.batchOperationManager.executeBatch(
         entries,
         (res, entry: any) => {
           res.check(entry);
+          
+          if (isTimestampsEnabled) {
+            entry.value = { ...entry.value, updatedAt: timestamp };
+          }
+
           res.set(entry.key, entry.value);
         },
         "update",
@@ -178,6 +192,13 @@ export class CrudManager {
     item: z.output<T["schema"]>,
     keys: DriftKey[],
   ) {
+    const timestamp = new Date().toISOString();
+    const isTimestampsEnabled = this.options?.timestamps;
+
+    if(isTimestampsEnabled) {
+      item = { ...item, createdAt: timestamp, updatedAt: null };
+    }
+
     for (const { accessKey, kvKey } of keys) {
       switch (accessKey.type) {
         case "primary":
@@ -197,7 +218,7 @@ export class CrudManager {
    * @param tableName - The name of the table.
    * @param tableDefinition - The definition of the table.
    * @param createArgs - The arguments for creating the entry.
-   * @returns A promise that resolves to the created entry with a versionstamp.
+   * @returns A promise that resolves to the created entry with a versionstamp or timestamps.
    * @example
    * const newEntry = await crudManager.create('users', userTableDefinition, { data: { name: 'John' } });
    */
@@ -205,12 +226,12 @@ export class CrudManager {
     tableName: string,
     tableDefinition: T,
     createArgs: DriftCreateArgs<T>,
-  ): Promise<WithVersionstamp<z.output<T["schema"]>>> {
-    return (
-      await this.createMany(tableName, tableDefinition, {
-        data: [createArgs.data],
-      })
-    )?.[0];
+  ): Promise<WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>> {
+    const createdEntries = await this.createMany(tableName, tableDefinition, {
+      data: [createArgs.data],
+    });
+    
+    return createdEntries[0] as WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>;
   }
 
   /**
@@ -218,7 +239,7 @@ export class CrudManager {
    * @param tableName - The name of the table.
    * @param tableDefinition - The definition of the table.
    * @param createManyArgs - The arguments for creating multiple entries.
-   * @returns A promise that resolves to an array of created entries with versionstamps.
+   * @returns A promise that resolves to an array of created entries with versionstamps or timestamps.
    * @example
    * const newEntries = await crudManager.createMany('users', userTableDefinition, { data: [{ name: 'John' }, { name: 'Jane' }] });
    */
@@ -226,23 +247,21 @@ export class CrudManager {
     tableName: string,
     tableDefinition: T,
     createManyArgs: DriftCreateManyArgs<T>,
-  ): Promise<WithVersionstamp<z.output<T["schema"]>>[]> {
-    return await this.batchOperationManager.executeBatch(
+  ): Promise<(WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>)[]> {
+    const entriesWithVersionstamps = await this.batchOperationManager.executeBatch(
       createManyArgs.data,
       (res, data) => {
-        const parsedData: z.output<T["schema"]> =
-          tableDefinition.schema.parse(data);
-        const keys = schemaToKeys(
-          tableName,
-          tableDefinition.schema,
-          parsedData,
-        );
+        const parsedData: z.output<T["schema"]> = tableDefinition.schema.parse(data);
+        const keys = schemaToKeys(tableName, tableDefinition.schema, parsedData);
 
         this.createOne(res, parsedData, keys);
         return parsedData;
       },
       "create",
+      this.options,
     );
+
+    return entriesWithVersionstamps as (WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>)[];
   }
 
   /**
@@ -261,7 +280,7 @@ export class CrudManager {
   ): Promise<WithVersionstamp<z.output<T["schema"]>>[]> {
     const keys = schemaToKeys(
       tableName,
-      tableDefinition.schema,
+      tableDefinition.schema as z.ZodObject<z.ZodRawShape, "strip", z.ZodTypeAny, { [x: string]: any; }, { [x: string]: any; }>,
       queryArgs.where ?? [],
     );
 
@@ -352,7 +371,7 @@ export class CrudManager {
         )
       : foundItems;
 
-    return selectedItems.map((item) => mergeValueAndVersionstamp(item));
+    return selectedItems.map((item) => mergeValueAndVersionstamp(item)) as WithVersionstamp<z.output<T["schema"]>>[];
   }
 
   /**
@@ -375,7 +394,7 @@ export class CrudManager {
 
     return (
       await this.findMany(tableName, tableDefinition, queryArgs)
-    )?.[0] as Awaited<ReturnType<DriftMethods<T>["findFirst"]>>;
+    )?.[0] as WithVersionstamp<z.output<T["schema"]>> | null;
   }
 
   /**
@@ -393,7 +412,7 @@ export class CrudManager {
     queryArgs: DriftQueryArgs<T>,
   ): Promise<WithVersionstamp<z.output<T["schema"]>> | null> {
     return (
-      (await this.findFirst(tableName, tableDefinition, queryArgs)) ?? null
+      (await this.findFirst(tableName, tableDefinition, queryArgs)) ?? null  
     );
   }
 }

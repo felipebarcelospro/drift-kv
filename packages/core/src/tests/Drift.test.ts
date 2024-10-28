@@ -1,18 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { Drift } from '../core/Drift';
 import { DriftPlugin } from '../core/Plugin';
-import { MockDenoKVClient } from './mocks/MockDenoKVClient';
+import { InMemoryDenoKv } from './kv-mock';
 
 describe('Drift', () => {
-  let client: MockDenoKVClient;
-  let drift: Drift;
-
-  beforeEach(() => {
-    client = new MockDenoKVClient();
-    drift = new Drift({ client });
-  });
+  let client = new InMemoryDenoKv();
 
   it('should initialize with default configuration', () => {
+    const drift = new Drift({ 
+      client,
+      schemas: {
+        entities: {},
+        queues: {},
+      },
+    });
+
     expect(drift.client).toBe(client);
     expect(drift.plugins).toEqual([]);
     expect(drift.entities).toEqual({});
@@ -27,18 +30,42 @@ describe('Drift', () => {
       hooks: {},
       methods: {},
     });
-    drift = new Drift({ client, plugins: [plugin] });
+
+    const drift = new Drift({ 
+      client, 
+      plugins: [plugin],
+      schemas: {
+        entities: {},
+        queues: {},
+      },
+    });
+
     expect(drift.plugins).toContain(plugin);
   });
 
   it('should register entities and queues', () => {
-    const entityFactory = vi.fn().mockReturnValue({});
-    const queueFactory = vi.fn().mockReturnValue({});
-    drift = new Drift({
+    const drift = new Drift({
       client,
       schemas: {
-        entities: { testEntity: entityFactory },
-        queues: { testQueue: queueFactory },
+        entities: { 
+          testEntity: {
+            name: 'testEntity',
+            schema: z.object({
+              id: z.string().uuid().describe('primary'),
+              name: z.string(),
+            }),
+          },
+        },
+        queues: { 
+          testQueue: {
+            name: 'testQueue',
+            schema: z.object({
+              id: z.string().uuid().describe('primary'),
+              name: z.string(),
+            }),
+            handler: vi.fn(),
+          },
+        },
       },
     });
     expect(drift.entities.testEntity).toBeDefined();
@@ -53,8 +80,18 @@ describe('Drift', () => {
       onEnd: vi.fn(),
       onError: vi.fn(),
     };
-    drift = new Drift({ client, hooks });
+
+    const drift = new Drift({ 
+      client, 
+      hooks,
+      schemas: {
+        entities: {},
+        queues: {},
+      },
+    });
+
     await drift.close();
+
     expect(hooks.beforeConnect).toHaveBeenCalled();
     expect(hooks.onConnect).toHaveBeenCalled();
     expect(hooks.afterConnect).toHaveBeenCalled();
@@ -70,7 +107,16 @@ describe('Drift', () => {
       hooks: { beforeQuery: pluginHook },
       methods: {},
     });
-    drift = new Drift({ client, plugins: [plugin] });
+
+    const drift = new Drift({ 
+      client, 
+      plugins: [plugin],
+      schemas: {
+        entities: {},
+        queues: {},
+      },
+    });
+
     await drift.executeHook('beforeQuery', {});
     expect(pluginHook).toHaveBeenCalled();
   });
@@ -79,7 +125,16 @@ describe('Drift', () => {
     const hooks = {
       onEnd: vi.fn(),
     };
-    drift = new Drift({ client, hooks });
+    
+    const drift = new Drift({ 
+      client, 
+      hooks,
+      schemas: {
+        entities: {},
+        queues: {},
+      },
+    });
+    
     await drift.close();
     expect(hooks.onEnd).toHaveBeenCalled();
   });
