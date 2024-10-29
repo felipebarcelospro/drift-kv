@@ -21,13 +21,13 @@ curl -fsSL https://deno.land/x/install/install.sh | sh
 Next, install Drift KV in your Next.js project:
 
 ```bash
-npm install drift-kv
+npm install @drift-kv/core
 ```
 
 For Deno, you can import Drift KV directly:
 
 ```typescript
-import { Drift } from "https://deno.land/x/drift/mod.ts";
+deno add jsr:@drift-kv/core;
 ```
 
 ## Integrating Drift KV with Next.js 15
@@ -36,97 +36,58 @@ Next.js 15 introduces several new features that work seamlessly with Drift KV. L
 
 ```typescript
 // pages/api/db.ts
-import { Drift } from 'drift-kv';
+import { Drift, DriftEntity } from '@drift-kv/core';
 import { z } from 'zod';
 
-const drift = new Drift({
-  client: await Deno.openKv(), // Using Deno KV for storage
-  schemas: {
-    user: {
-      name: 'user',
-      schema: z.object({
-        id: z.string().uuid(),
-        name: z.string(),
-        email: z.string().email(),
-      }),
-    },
+const user = new DriftEntity({
+  name: 'user',
+  options: {
+    timestamps: true,
   },
+  schema: (schema) => ({
+    id: schema.string().uuid(),
+    name: schema.string(),
+    email: schema.string().email(),
+  }),
 });
 
-export default drift;
+export const drift = new Drift({
+  client: await Deno.openKv(), // Using Deno KV for storage
+  schemas: {
+    entities: {
+      user,
+    },
+    queues: {},
+  },
+});
 ```
 
 Now, let's create an API route to interact with our database:
 
 ```typescript
-// pages/api/users.ts
+// app/api/users/route.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import drift from './db';
+import { drift } from './db';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'GET') {
-    const users = await drift.entities.user.findMany();
-    res.status(200).json(users);
-  } else if (req.method === 'POST') {
-    const newUser = await drift.entities.user.create({
-      data: req.body,
-    });
-    res.status(201).json(newUser);
-  } else {
-    res.status(405).end();
-  }
+export const GET = (request: NextRequest) => {
+  return NextResponse.json(drift.entities.user.findMany());
 }
-```
 
-## Leveraging Deno 2 with Drift KV
-
-Deno 2 brings improved performance, better compatibility with npm packages, and a suite of built-in tools. Here's how to use Drift KV in a Deno environment:
-
-```typescript
-// server.ts
-import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
-import { Drift } from "https://deno.land/x/drift/mod.ts";
-
-const drift = new Drift({
-  client: await Deno.openKv(),
-  // ... schema configuration
-});
-
-serve(async (req) => {
-  if (req.method === 'GET' && req.url.endsWith('/users')) {
-    const users = await drift.entities.user.findMany();
-    return new Response(JSON.stringify(users), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  // ... handle other routes
-});
-```
-
-To run this Deno server:
-
-```bash
-deno run --allow-net --allow-read server.ts
 ```
 
 ## Building a Full-Stack Application
 
-Now, let's combine Next.js 15 and Deno 2 with Drift KV to create a full-stack application:
+Now, let's combine Next.js 15 and Deno 2 with Drift KV to create a full-stack application with Server Components:
 
 1. Set up your Next.js frontend:
 
 ```typescript
-// pages/index.tsx
+// app/page.tsx
 import { useEffect, useState } from 'react';
+import { drift } from './api/db';
 
-export default function Home() {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(setUsers);
-  }, []);
+export async function Page() {
+  const users = await drift.entities.user.findMany();
 
   return (
     <div>
@@ -139,110 +100,6 @@ export default function Home() {
     </div>
   );
 }
-```
-
-2. Create a Deno backend service:
-
-```typescript
-// deno-backend/server.ts
-import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
-import { Drift } from "https://deno.land/x/drift/mod.ts";
-
-const drift = new Drift({
-  client: await Deno.openKv(),
-  // ... schema configuration
-});
-
-serve(async (req) => {
-  if (req.method === 'GET' && req.url.endsWith('/api/users')) {
-    const users = await drift.entities.user.findMany();
-    return new Response(JSON.stringify(users), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  // ... handle other routes
-});
-```
-
-3. Configure Next.js to proxy requests to your Deno backend:
-
-```javascript
-// next.config.js
-module.exports = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*', // Deno server address
-      },
-    ];
-  },
-};
-```
-
-## Performance Optimization Techniques
-
-1. Implement caching with Drift KV's built-in caching mechanism:
-
-```typescript
-const cachedUsers = await drift.entities.user.findMany({
-  cache: {
-    ttl: 60 * 5, // Cache for 5 minutes
-  },
-});
-```
-
-2. Utilize Next.js 15's Automatic Static Optimization:
-
-```typescript
-// pages/users/[id].tsx
-export async function getStaticProps({ params }) {
-  const user = await drift.entities.user.findUnique({
-    where: { id: params.id },
-  });
-  return { props: { user }, revalidate: 60 };
-}
-
-export async function getStaticPaths() {
-  const users = await drift.entities.user.findMany({ select: { id: true } });
-  return {
-    paths: users.map(user => ({ params: { id: user.id } })),
-    fallback: 'blocking',
-  };
-}
-```
-
-3. Leverage Deno's performance features:
-
-```typescript
-// Use Deno's native HTTP server for better performance
-const server = Deno.listen({ port: 8000 });
-for await (const conn of server) {
-  serveHttp(conn);
-}
-```
-
-## Deployment Strategies
-
-1. Deploy Next.js frontend to Vercel:
-
-```bash
-vercel
-```
-
-2. Deploy Deno backend to Deno Deploy:
-
-```bash
-deployctl deploy --project=my-drift-app ./deno-backend/server.ts
-```
-
-3. Configure environment variables for production:
-
-```typescript
-const drift = new Drift({
-  client: await Deno.openKv(Deno.env.get("KV_PATH")),
-  // ... other configuration
-});
 ```
 
 ## Conclusion

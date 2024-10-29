@@ -5,18 +5,6 @@ import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 
-const pathVariants = {
-  hidden: { pathLength: 0, opacity: 0 },
-  visible: {
-    pathLength: 1,
-    opacity: 1,
-    transition: {
-      duration: 1.8,
-      ease: "easeInOut",
-    },
-  },
-};
-
 const logoVariants = {
   hidden: { scale: 0.7, opacity: 0 },
   visible: {

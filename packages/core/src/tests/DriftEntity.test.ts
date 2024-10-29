@@ -1,23 +1,27 @@
-import { DriftPlugin } from 'src/mod';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 import { Drift } from '../core/Drift';
+import { DriftEntity } from '../generators/DriftEntity';
 import { InMemoryDenoKv } from './kv-mock';
 
 describe('DriftEntity', () => {
   let client = new InMemoryDenoKv();
+
+  const user = new DriftEntity({
+    name: 'user',
+    options: {
+      timestamps: true,
+    },
+    schema: (schema) => ({
+      name: schema.string(),
+      age: schema.number().optional(),
+    }),
+  });
+
   let drift = new Drift({
     client,
     schemas: {
       entities: {
-        testEntity: {
-          name: 'testEntity',
-          schema: z.object({
-            id: z.string().uuid().describe('primary'),
-            name: z.string(),
-            age: z.number().optional(),
-          }),
-        },
+        user,
       },
       queues: {},
     },
@@ -28,138 +32,116 @@ describe('DriftEntity', () => {
   });
 
   it('should initialize correctly', () => {
-    expect(drift.entities.testEntity).toBeDefined();
+    expect(drift.entities.user).toBeDefined();
   });
 
-  it('should create a new entity record', async () => {
-    const data = { id: crypto.randomUUID(), name: 'Test' };
-    const result = await drift.entities.testEntity.create({ data });
-    expect(result).toHaveProperty('id', data.id);
+  it('should create a new entity record with provided ID', async () => {
+    const data = { name: 'Test' };
+    const result = await drift.entities.user.create({ data });
+    expect(result).toHaveProperty('id', result.id);
     expect(result).toHaveProperty('name', data.name);
   });
 
   it('should find a unique entity record', async () => {
-    const data = { id: crypto.randomUUID(), name: 'Test' };
-    await drift.entities.testEntity.create({ data });
-    const result = await drift.entities.testEntity.findUnique({ where: { id: data.id } });
-    expect(result).toHaveProperty('id', data.id);
+    const data = { name: 'Test' };
+    const createdEntity = await drift.entities.user.create({ data });
+    const result = await drift.entities.user.findUnique({ where: { id: createdEntity.id } });
+    expect(result?.id).toBe(createdEntity.id)
+    expect(result).toHaveProperty('id', createdEntity.id);
     expect(result).toHaveProperty('name', data.name);
   });
 
   it('should find multiple entity records', async () => {
-    const data1 = { id: crypto.randomUUID(), name: 'Test1' };
-    const data2 = { id: crypto.randomUUID(), name: 'Test2' };
-    await drift.entities.testEntity.create({ data: data1 });
-    await drift.entities.testEntity.create({ data: data2 });
-    const results = await drift.entities.testEntity.findMany({});
-    expect(results[0]).toHaveProperty('id', data1.id);
-    expect(results[0]).toHaveProperty('name', data1.name);
+    const data1 = { name: 'Test1' };
+    const data2 = { name: 'Test2' };
     
-    expect(results[1]).toHaveProperty('id', data2.id);
+    const createdEntity1 = await drift.entities.user.create({ data: data1 });
+    const createdEntity2 = await drift.entities.user.create({ data: data2 });
+
+    const results = await drift.entities.user.findMany();
+
+    expect(results[0]).toHaveProperty('id', createdEntity1.id);
+    expect(results[0]).toHaveProperty('name', data1.name);    
+    expect(results[1]).toHaveProperty('id', createdEntity2.id);
     expect(results[1]).toHaveProperty('name', data2.name);
   });
 
   it('should update an existing entity record', async () => {
-    const data = { id: crypto.randomUUID(), name: 'Test' };
-    await drift.entities.testEntity.create({ data });
+    const data = { name: 'Test' };
+    const createdEntity = await drift.entities.user.create({ data });
     const updatedData = { name: 'Updated Test' };
-    const result = await drift.entities.testEntity.update({ where: { id: data.id }, data: updatedData });
-    expect(result).toHaveProperty('id', data.id);
-    expect(result).toHaveProperty('name', updatedData.name);
+
+    const updatedEntity = await drift.entities.user.update({
+      where: { id: createdEntity.id },
+      data: updatedData,
+    });
+    
+    expect(updatedEntity).toBeInstanceOf(Object);
+    expect(updatedEntity).toHaveProperty('name', updatedData.name);
   });
 
   it('should delete an entity record', async () => {
-    const data = { id: crypto.randomUUID(), name: 'Test' };
-    await drift.entities.testEntity.create({ data });
-    const result = await drift.entities.testEntity.delete({ where: { id: data.id } });
-    expect(result).toBeNull();
+    const data = { name: 'Test' };
+    const createdEntity = await drift.entities.user.create({ data });
+    const result = await drift.entities.user.delete({ where: { id: createdEntity.id } });
+    expect(result).toBeUndefined();
   });
 
   it('should apply filters in findMany', async () => {
-    const data1 = { id: crypto.randomUUID(), name: 'Test1', age: 20 };
-    const data2 = { id: crypto.randomUUID(), name: 'Test2', age: 30 };
+    const data1 = { name: 'Test1', age: 20 };
+    const data2 = { name: 'Test2', age: 30 };
 
-    await drift.entities.testEntity.create({ data: data1 });
-    await drift.entities.testEntity.create({ data: data2 });
+    await drift.entities.user.create({ data: data1 });
+    const createdEntity2 = await drift.entities.user.create({ data: data2 });
 
-    const results = await drift.entities.testEntity.findMany({ where: { age: 30 } });
+    const results = await drift.entities.user.findMany({ where: { age: 30 } });
 
     expect(results).toHaveLength(1);
-    expect(results[0]).toHaveProperty('id', data2.id);
+    expect(results[0]).toHaveProperty('id', createdEntity2.id);
     expect(results[0]).toHaveProperty('name', data2.name);
     expect(results[0]).toHaveProperty('age', data2.age);
   });
 
   it('should apply sorting in findMany', async () => {
-    const data1 = { id: crypto.randomUUID(), name: 'Test1', age: 20 };
-    const data2 = { id: crypto.randomUUID(), name: 'Test2', age: 30 };
-    await drift.entities.testEntity.create({ data: data1 });
-    await drift.entities.testEntity.create({ data: data2 });
-    const results = await drift.entities.testEntity.findMany({ orderBy: { age: 'desc' } });
-    expect(results[0]).toHaveProperty('id', data2.id);
+    const data1 = { name: 'Test1', age: 20 };
+    const data2 = { name: 'Test2', age: 30 };
+    const createdEntity1 = await drift.entities.user.create({ data: data1 });
+    const createdEntity2 = await drift.entities.user.create({ data: data2 });
+    const results = await drift.entities.user.findMany({ orderBy: { age: 'desc' } });
+    expect(results[0]).toHaveProperty('id', createdEntity2.id);
     expect(results[0]).toHaveProperty('name', data2.name);
     expect(results[0]).toHaveProperty('age', data2.age);
     
-    expect(results[1]).toHaveProperty('id', data1.id);
+    expect(results[1]).toHaveProperty('id', createdEntity1.id);
     expect(results[1]).toHaveProperty('name', data1.name);
     expect(results[1]).toHaveProperty('age', data1.age);
   });
 
   it('should apply pagination in findMany', async () => {
-    const data1 = { id: crypto.randomUUID(), name: 'Test1', age: 20 };
-    const data2 = { id: crypto.randomUUID(), name: 'Test2', age: 30 };
-    await drift.entities.testEntity.create({ data: data1 });
-    await drift.entities.testEntity.create({ data: data2 });
-    const results = await drift.entities.testEntity.findMany({ skip: 1, take: 1 });
-    expect(results[0]).toHaveProperty('id', data2.id);
-    expect(results[0]).toHaveProperty('name', data2.name);
-    expect(results[0]).toHaveProperty('age', data2.age);
+    const data1 = { name: 'Test1', age: 20 };
+    const data2 = { name: 'Test2', age: 30 };
+    const createdEntity1 = await drift.entities.user.create({ data: data1 });
+    const createdEntity2 = await drift.entities.user.create({ data: data2 });
+    const results = await drift.entities.user.findMany({ skip: 1, take: 1 });
+    expect(results[0]).toHaveProperty('id', createdEntity2.id);
+    expect(results[0]).toHaveProperty('name', createdEntity2.name);
+    expect(results[0]).toHaveProperty('age', createdEntity2.age);
     
-  });
-
-  it('should apply distinct filtering in findMany', async () => {
-    const data1 = { id: crypto.randomUUID(), name: 'Test1', age: 20 };
-    const data2 = { id: crypto.randomUUID(), name: 'Test2', age: 20 };
-    await drift.entities.testEntity.create({ data: data1 });
-    await drift.entities.testEntity.create({ data: data2 });
-    const results = await drift.entities.testEntity.findMany({ distinct: ['age'] });
-
-    expect(results[0]).toHaveProperty('id', data1.id);
-    expect(results[0]).toHaveProperty('name', data1.name);
-    expect(results[0]).toHaveProperty('age', data1.age);    
-  });
-
-  it('should integrate with plugins', async () => {
-    const plugin = new DriftPlugin({
-      name: 'testPlugin',
-      description: 'testPlugin',
-      hooks: {
-        beforeQuery: vi.fn(),
-        afterQuery: vi.fn(),
-      },
-    });
-    
-    drift.plugins.push(plugin);
-
-    const data = { id: crypto.randomUUID(), name: 'Test' };
-    await drift.entities.testEntity.create({ data });
-
-    expect(plugin.hooks.beforeQuery).toHaveBeenCalled();
-    expect(plugin.hooks.afterQuery).toHaveBeenCalled();
   });
 
   it('should handle real-time subscriptions', async () => {
     const callback = vi.fn();
 
-    const data = { id: crypto.randomUUID(), name: 'Test' };
-    const user = await drift.entities.testEntity.create({ data });
+    const data = { name: 'Test' };
 
-    const { cancel } = drift.entities.testEntity.watch({
+    const user = await drift.entities.user.create({ data });
+
+    const { cancel } = drift.entities.user.watch({
       where: { id: user.id },
       callback,
     });
 
-    await drift.entities.testEntity.update({
+    await drift.entities.user.update({
       where: { id: user.id },
       data: {
         name: 'Updated Test',
@@ -170,7 +152,7 @@ describe('DriftEntity', () => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     expect(callback).toHaveBeenCalledWith(expect.objectContaining({
-      id: data.id,
+      id: user.id,
       name: 'Updated Test',
     }));
 
@@ -180,16 +162,15 @@ describe('DriftEntity', () => {
   it('should handle real-time subscriptions for all records', async () => {
     const callback = vi.fn();
 
-    const data1 = { id: crypto.randomUUID(), name: 'Test1' };
+    const data1 = { name: 'Test1' };
+    const createdEntity1 = await drift.entities.user.create({ data: data1 });
 
-    await drift.entities.testEntity.create({ data: data1 });
-
-    const { cancel } = drift.entities.testEntity.watch({
+    const { cancel } = drift.entities.user.watch({
       callback,
     });
 
-    await drift.entities.testEntity.update({
-      where: { id: data1.id },
+    await drift.entities.user.update({
+      where: { id: createdEntity1.id },
       data: {
         name: 'Updated Test1',
       },

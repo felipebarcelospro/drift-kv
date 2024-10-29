@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -11,10 +13,7 @@ import { config } from "@/configs/application";
 import { RepositoryInfo } from "@/lib/github";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Menu, Star } from "lucide-react";
-import Link from "next/link";
 import { Logo } from "./logo";
-import { ThemeToggle } from "./theme-toggle";
-// Components
 
 const StarCount = ({ stars }: { stars: number }) => {
   return (
@@ -156,7 +155,7 @@ const DesktopNav = ({
           <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path>
         </svg>
       }
-      label="Twitter"
+      label="X"
     />
     <SocialButton
       href={config.githubUrl}
@@ -178,7 +177,6 @@ const DesktopNav = ({
       }
       label="GitHub"
     />
-    <ThemeToggle />
   </motion.div>
 );
 
@@ -346,7 +344,7 @@ const MobileNav = ({ lastUpdateDate }: { lastUpdateDate: string }) => (
                   <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path>
                 </svg>
               }
-              label="Twitter"
+              label="X"
             />
             <SocialButton
               href={config.githubUrl}

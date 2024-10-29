@@ -1,52 +1,49 @@
-import { AtomicOperation, Kv, KvEntryMaybe, KvKeyPart } from "@deno/kv";
+import { AtomicOperation, Kv, KvEntry, KvEntryMaybe, KvKeyPart } from "@deno/kv";
 import { z } from "zod";
 import { DriftError } from "../errors.js";
-import {
-  DriftCreateArgs,
-  DriftCreateManyArgs,
-  DriftKey,
-  DriftQueryArgs,
-  DriftQueryKvOptions,
-  DriftTableDefinition,
-  WithMaybeVersionstamp,
-  WithTimestamps,
-  WithVersionstamp
-} from "../types";
-import { mergeValueAndVersionstamp, schemaToKeys } from "../utils";
+import { DRIFT_ENTITY_DEFAULT_FIELDS_WITH_TIMESTAMPS, DriftEntity } from "../generators/DriftEntity.js";
+import { DriftCreateAndUpdateResponse, DriftCreateArgs, DriftCreateManyArgs, DriftKey, DriftQueryArgs, Entity, EntityInput, QueryResponse } from "../types.js";
 import { BatchOperationManager } from "./BatchOperationManager";
 import { KeyManager } from "./KeyManager";
-import { RelationManager } from "./RelationManager";
 import { SearchManager } from "./SearchManager";
 
 /**
  * Manages CRUD operations for Drift tables.
  */
-export class CrudManager {
+export class CrudManager<T extends DriftEntity<any, any, any>> {
   private kv: Kv;
-  private options?: {
-    timestamps?: boolean;
-  };
+  private entity: T;
 
-  public keyManager: KeyManager;
-  public relationManager: RelationManager;
-  public batchOperationManager: BatchOperationManager<
-    z.output<DriftTableDefinition["schema"]>
-  >;
-  public searchManager: SearchManager;
+  public keyManager: KeyManager<T>;
+  public batchOperationManager: BatchOperationManager<T>;
+  public searchManager: SearchManager<T>;
 
   /**
    * Creates an instance of CrudManager.
    * @param kv - The key-value store instance.
    */
-  constructor(kv: Kv, options?: { timestamps?: boolean }) {
+  constructor({
+    kv,
+    entity,
+  }: {
+    kv: Kv;
+    entity: T;
+  }) {
     this.kv = kv;
-    this.options = options;
+    this.entity = entity;
     this.searchManager = new SearchManager();
-    this.keyManager = new KeyManager(kv, this.searchManager, this);
-    this.relationManager = new RelationManager(kv);
-    this.batchOperationManager = new BatchOperationManager<
-      z.output<DriftTableDefinition["schema"]>
-    >(kv);
+
+    this.keyManager = new KeyManager({
+      kv,
+      entity,
+      searchManager: this.searchManager,
+      crudManager: this,
+    });
+
+    this.batchOperationManager = new BatchOperationManager<T>({
+      kv,
+      entity,
+    });
   }
 
   /**
@@ -56,13 +53,13 @@ export class CrudManager {
    * @example
    * const entries = await crudManager.listTable('users');
    */
-  async listTable<T extends DriftTableDefinition>(
+  async listTable<T extends DriftEntity<any, any, any>>(
     tableName: string,
-  ): Promise<KvEntryMaybe<z.output<T["schema"]>>[]> {
-    const items: KvEntryMaybe<z.output<T["schema"]>>[] = [];
+  ): Promise<KvEntryMaybe<Entity<T>>[]> {
+    const items: KvEntryMaybe<Entity<T>>[] = [];
 
     for await (const item of this.kv.list({ prefix: [tableName] })) {
-      items.push(item);
+      items.push(item as KvEntryMaybe<Entity<T>>);
     }
 
     return items;
@@ -75,14 +72,14 @@ export class CrudManager {
    * @example
    * const entries = await crudManager.listTableWithIndexPrefixes('user:', 'admin:');
    */
-  async listTableWithIndexPrefixes<T extends DriftTableDefinition>(
+  async listTableWithIndexPrefixes<T extends DriftEntity<any, any, any>>(
     ...prefixes: KvKeyPart[]
-  ): Promise<KvEntryMaybe<z.output<T["schema"]>>[]> {
-    const items: KvEntryMaybe<z.output<T["schema"]>>[] = [];
+  ): Promise<KvEntryMaybe<Entity<T>>[]> {
+    const items: KvEntryMaybe<Entity<T>>[] = [];
 
     for (let i = 0; i < prefixes.length; i++) {
       for await (const item of this.kv.list({ prefix: [prefixes[i]] })) {
-        items.push(item);
+        items.push(item as KvEntryMaybe<Entity<T>>);
       }
     }
 
@@ -97,20 +94,19 @@ export class CrudManager {
    * @example
    * const entries = await crudManager.read([{ denoKey: 'user:1' }, { denoKey: 'user:2' }]);
    */
-  async read<T extends DriftTableDefinition>(
-    keys: DriftKey[],
-    kvOptions?: DriftQueryKvOptions,
+  async read<T extends DriftEntity<any, any, any>>(
+    keys: DriftKey[]
   ): Promise<KvEntryMaybe<z.output<T["schema"]>>[]> {
     const result = await this.kv.getMany(
-      keys.map(({ kvKey }) => kvKey),
-      kvOptions,
+      keys.map(key => key.kv),
     );
 
     if (keys.length > 1) {
       const unique = [] as (string | null)[];
+
       return result.filter(
         (x) => !unique.includes(x.versionstamp) && unique.push(x.versionstamp),
-      );
+      ) as KvEntryMaybe<Entity<T>>[];
     }
 
     return result as KvEntryMaybe<z.output<T["schema"]>>[];
@@ -123,26 +119,22 @@ export class CrudManager {
    * @example
    * await crudManager.remove(['user:1', 'user:2']);
    */
-  async remove<T extends DriftTableDefinition>(
-    tableName: string,
-    tableDefinition: T,
+  async remove<T extends DriftEntity<any, any, any>>(
     queryArgs: {
-      where?: Partial<WithMaybeVersionstamp<z.output<T["schema"]>>>;
+      where?: Partial<Entity<T>>;
     },
   ): Promise<void> {
-    const keys = schemaToKeys(
-      tableName,
-      tableDefinition.schema,
+    const keys = this.keyManager.schemaToKeys(
       queryArgs.where ?? [],
     );
 
     await this.batchOperationManager.executeBatch(
       keys,
       (res, key: DriftKey) => {
-        res.delete(key.kvKey);
+        res.delete(key.kv);
       },
       "delete",
-      this.options,
+      this.entity.options,
     );
   }
 
@@ -154,14 +146,13 @@ export class CrudManager {
    * const updatedEntries = await crudManager.update([{ key: 'user:1', value: { name: 'John' } }]);
    */
   async update<
-    T extends DriftTableDefinition,
-    Item extends z.output<T["schema"]>,
-  >(entries: KvEntryMaybe<Item>[]): Promise<WithVersionstamp<Item>[]> {
-    const isTimestampsEnabled = this.options?.timestamps;
+    T extends DriftEntity<any, any, any>,
+    Item extends EntityInput<T>,
+  >(entries: KvEntryMaybe<Item>[]): Promise<Entity<T>[]> {
+    const isTimestampsEnabled = this.entity.options?.timestamps;
     const timestamp = new Date().toISOString();
 
-    const entriesWithVersionstamps =
-      await this.batchOperationManager.executeBatch(
+    const updatedEntries = await this.batchOperationManager.executeBatch(
         entries,
         (res, entry: any) => {
           res.check(entry);
@@ -175,7 +166,7 @@ export class CrudManager {
         "update",
       );
 
-    return entriesWithVersionstamps.map(({ value, versionstamp }) => ({
+    return updatedEntries.map(({ value, versionstamp }) => ({
       ...value,
       versionstamp,
     }));
@@ -187,28 +178,21 @@ export class CrudManager {
    * @param item - The item to create.
    * @param keys - The keys associated with the item.
    */
-  private createOne<T extends DriftTableDefinition>(
+  private createOne<T extends DriftEntity<any, any, any>>(
     res: AtomicOperation,
-    item: z.output<T["schema"]>,
+    item: EntityInput<T>,
     keys: DriftKey[],
   ) {
-    const timestamp = new Date().toISOString();
-    const isTimestampsEnabled = this.options?.timestamps;
-
-    if(isTimestampsEnabled) {
-      item = { ...item, createdAt: timestamp, updatedAt: null };
-    }
-
-    for (const { accessKey, kvKey } of keys) {
-      switch (accessKey.type) {
+    for (const key of keys) {
+      switch (key.access.type) {
         case "primary":
         case "unique":
-          res = res.check({ key: kvKey, versionstamp: null });
+          res = res.check({ key: key.kv, versionstamp: null });
         case "index":
-          res = res.set(kvKey, item);
+          res = res.set(key.kv, item);
           break;
         default:
-          throw new DriftError(`Unknown index key ${kvKey}`);
+          throw new DriftError(`Unknown index key ${key.kv}`);
       }
     }
   }
@@ -222,16 +206,14 @@ export class CrudManager {
    * @example
    * const newEntry = await crudManager.create('users', userTableDefinition, { data: { name: 'John' } });
    */
-  async create<T extends DriftTableDefinition>(
-    tableName: string,
-    tableDefinition: T,
+  async create<T extends DriftEntity<any, any, any>>(
     createArgs: DriftCreateArgs<T>,
-  ): Promise<WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>> {
-    const createdEntries = await this.createMany(tableName, tableDefinition, {
+  ): Promise<DriftCreateAndUpdateResponse<T>> {
+    const createdEntries = await this.createMany({
       data: [createArgs.data],
     });
     
-    return createdEntries[0] as WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>;
+    return createdEntries[0];
   }
 
   /**
@@ -243,25 +225,32 @@ export class CrudManager {
    * @example
    * const newEntries = await crudManager.createMany('users', userTableDefinition, { data: [{ name: 'John' }, { name: 'Jane' }] });
    */
-  async createMany<T extends DriftTableDefinition>(
-    tableName: string,
-    tableDefinition: T,
+  async createMany<T extends DriftEntity<any, any, any>>(
     createManyArgs: DriftCreateManyArgs<T>,
-  ): Promise<(WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>)[]> {
-    const entriesWithVersionstamps = await this.batchOperationManager.executeBatch(
+  ): Promise<DriftCreateAndUpdateResponse<T>[]> {
+    let entriesWithVersionstamps = await this.batchOperationManager.executeBatch(
       createManyArgs.data,
-      (res, data) => {
-        const parsedData: z.output<T["schema"]> = tableDefinition.schema.parse(data);
-        const keys = schemaToKeys(tableName, tableDefinition.schema, parsedData);
+      (res, data: EntityInput<T> & { id?: string, createdAt?: Date, updatedAt?: Date }) => {
+        if(!data.id) {
+          data.id = DRIFT_ENTITY_DEFAULT_FIELDS_WITH_TIMESTAMPS.id.default();
+        }
+
+        if(this.entity.options?.timestamps) {
+          if(!data.createdAt) data.createdAt = DRIFT_ENTITY_DEFAULT_FIELDS_WITH_TIMESTAMPS.createdAt.default();
+          if(!data.updatedAt) data.updatedAt = DRIFT_ENTITY_DEFAULT_FIELDS_WITH_TIMESTAMPS.updatedAt.default();
+        }
+
+        const parsedData = this.entity.schema.parse(data);
+        const keys = this.keyManager.schemaToKeys(parsedData);
 
         this.createOne(res, parsedData, keys);
         return parsedData;
       },
       "create",
-      this.options,
+      this.entity.options,
     );
 
-    return entriesWithVersionstamps as (WithVersionstamp<z.output<T["schema"]>> | WithTimestamps<z.output<T["schema"]>>)[];
+    return entriesWithVersionstamps;
   }
 
   /**
@@ -273,105 +262,66 @@ export class CrudManager {
    * @example
    * const foundEntries = await crudManager.findMany('users', userTableDefinition, { where: { name: 'John' } });
    */
-  async findMany<T extends DriftTableDefinition>(
-    tableName: string,
-    tableDefinition: T,
-    queryArgs: DriftQueryArgs<T>,
-  ): Promise<WithVersionstamp<z.output<T["schema"]>>[]> {
-    const keys = schemaToKeys(
-      tableName,
-      tableDefinition.schema as z.ZodObject<z.ZodRawShape, "strip", z.ZodTypeAny, { [x: string]: any; }, { [x: string]: any; }>,
-      queryArgs.where ?? [],
-    );
+  async findMany<T extends DriftEntity<any, any, any>>(
+    queryArgs: DriftQueryArgs<T> = {},
+  ): Promise<QueryResponse<T>[]> {
+    const indexPrefixes = this.keyManager.getIndexPrefixes();
 
-    const indexPrefixes = this.keyManager.getIndexPrefixes(
-      tableName,
-      tableDefinition.schema,
+    const keys = this.keyManager.schemaToKeys(
+      queryArgs.where ?? [],
     );
 
     let foundItems = await this.keyManager.keysToItems(
       this.kv,
-      tableName,
-      keys.length > 0 ? keys : [],
-      queryArgs.where ?? {},
-      indexPrefixes.length > 0 ? [indexPrefixes[0]] : [],
-    );
-
-    if (queryArgs.include) {
-      for (const [relationName, relationValue] of Object.entries(
-        queryArgs.include,
-      )) {
-        const relationDefinition = tableDefinition.relations?.[relationName];
-        if (!relationDefinition) {
-          throw new DriftError(
-            `No relation found for relation name '${relationName}', make sure it's defined in your Drift KV configuration.`,
-          );
-        }
-        const tableName = relationDefinition[0];
-        const localKey = relationDefinition[2];
-        const foreignKey = relationDefinition[3];
-
-        for (let i = 0; i < foundItems.length; i++) {
-          const localKeyValue =
-            foundItems[i].value[
-              localKey.value as unknown as keyof z.output<T["schema"]>
-            ];
-          const foundRelationItems = await this.findMany(
-            tableName,
-            tableDefinition,
-            {
-              select: relationValue === true ? undefined : relationValue,
-              where: {
-                [foreignKey.value as unknown as string]: localKeyValue,
-              } as Partial<WithMaybeVersionstamp<z.output<T["schema"]>>>,
-            },
-          );
-
-          (foundItems[i].value as Record<string, unknown>)[relationName] =
-            this.relationManager.isToManyRelation(relationDefinition)
-              ? foundRelationItems
-              : foundRelationItems.length > 0
-                ? foundRelationItems[0]
-                : undefined;
-        }
-      }
-    }
+      keys.length > 0? keys : [],
+      queryArgs.where?? {},
+      indexPrefixes.length > 0? [indexPrefixes[0]] : [],
+    )
 
     if (queryArgs.orderBy) {
       const orderByKeys = Object.keys(queryArgs.orderBy);
       foundItems.sort((a, b) => {
         for (const key of orderByKeys) {
-          const order = queryArgs.orderBy[key];
+          const order = queryArgs.orderBy?.[key];
           const comparison =
             a.value[key] > b.value[key]
-              ? 1
+             ? 1
               : a.value[key] < b.value[key]
-                ? -1
+               ? -1
                 : 0;
-          if (comparison !== 0) {
-            return order === "asc" ? comparison : -comparison;
+          if (comparison!== 0) {
+            return order === "asc"? comparison : -comparison;
           }
         }
         return 0;
       });
     }
 
-    if (queryArgs.skip !== undefined) {
+    if (queryArgs.skip!== undefined) {
       foundItems = foundItems.slice(queryArgs.skip);
     }
 
-    if (queryArgs.take !== undefined) {
+    if (queryArgs.take!== undefined) {
       foundItems = foundItems.slice(0, queryArgs.take);
     }
 
-    const selectedItems = queryArgs.select
-      ? this.keyManager.selectFromEntries(
-          foundItems as KvEntryMaybe<z.output<T["schema"]>>[],
-          queryArgs.select,
-        )
-      : foundItems;
+    if (!foundItems.length) {
+      return [];
+    }
 
-    return selectedItems.map((item) => mergeValueAndVersionstamp(item)) as WithVersionstamp<z.output<T["schema"]>>[];
+    if(queryArgs.select) {  
+      foundItems = this.keyManager.selectFromEntries(
+        foundItems as KvEntry<z.output<T["schema"]>>[],
+        queryArgs.select,
+      ) as KvEntry<z.output<T["schema"]>>[];
+    }
+
+    return foundItems.map((item) => {
+      return {
+        ...item.value,
+        versionstamp: item.versionstamp,
+      }
+    }) as QueryResponse<T>[];
   }
 
   /**
@@ -383,18 +333,16 @@ export class CrudManager {
    * @example
    * const firstEntry = await crudManager.findFirst('users', userTableDefinition, { where: { name: 'John' } });
    */
-  async findFirst<T extends DriftTableDefinition>(
-    tableName: string,
-    tableDefinition: T,
+  async findFirst<T extends DriftEntity<any, any, any>>(
     queryArgs: DriftQueryArgs<T>,
-  ): Promise<WithVersionstamp<z.output<T["schema"]>> | null> {
+  ): Promise<QueryResponse<T>> {
     if (!queryArgs.where) {
       throw new Error("findUnique requires a where clause");
     }
 
     return (
-      await this.findMany(tableName, tableDefinition, queryArgs)
-    )?.[0] as WithVersionstamp<z.output<T["schema"]>> | null;
+      await this.findMany(queryArgs)
+    )?.[0] as QueryResponse<T>;
   }
 
   /**
@@ -406,13 +354,11 @@ export class CrudManager {
    * @example
    * const uniqueEntry = await crudManager.findUnique('users', userTableDefinition, { where: { id: '1' } });
    */
-  async findUnique<T extends DriftTableDefinition>(
-    tableName: string,
-    tableDefinition: T,
+  async findUnique<T extends DriftEntity<any, any, any>>(
     queryArgs: DriftQueryArgs<T>,
-  ): Promise<WithVersionstamp<z.output<T["schema"]>> | null> {
+  ): Promise<QueryResponse<T>> {
     return (
-      (await this.findFirst(tableName, tableDefinition, queryArgs)) ?? null  
+      (await this.findFirst(queryArgs)) ?? null  
     );
   }
 }

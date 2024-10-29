@@ -14,7 +14,7 @@ export function FeaturesSection() {
         visible: { opacity: 1 },
       }}
     >
-      <div className="container mx-auto max-w-5xl">
+      <div className="container mx-auto max-w-screen-md">
         <motion.h2
           className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-center"
           variants={{

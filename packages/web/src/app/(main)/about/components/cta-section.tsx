@@ -102,7 +102,7 @@ export function CTASection() {
             className="min-w-[120px] border-2 hover:bg-secondary/10 shadow-md hover:shadow-lg transition-all duration-300"
           >
             <Link
-              href="https://github.com/felipebarcelospro/drift"
+              href="https://github.com/felipebarcelospro/drift-kv"
               className="flex items-center gap-2"
             >
               <motion.svg

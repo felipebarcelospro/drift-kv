@@ -13,7 +13,7 @@ The following table shows which versions of Drift KV are currently supported wit
 
 If you discover a security vulnerability within Drift KV, please send an e-mail to [felipebarcelospro@gmail.com](mailto:felipebarcelospro@gmail.com). All security vulnerabilities will be promptly addressed by our team.
 
-For a more secure communication channel, you can also reach out to Felipe through Twitter [@felipebarcelospro](https://twitter.com/felipebarcelospro).
+For a more secure communication channel, you can also reach out to Felipe through X [@feldbarcelospro](https://x.com/feldbarcelospro).
 
 Please follow these guidelines when reporting:
 

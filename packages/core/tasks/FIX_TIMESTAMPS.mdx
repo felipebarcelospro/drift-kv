@@ -1,0 +1,116 @@
+## Proposta de Correção: Tipagem e Implementação Consistentes para Timestamps em Drift KV
+
+Esta proposta visa corrigir inconsistências na tipagem e implementação relacionadas à funcionalidade de timestamps no Drift KV. Atualmente, o tipo de retorno dos métodos CRUD não reflete corretamente a presença ou ausência dos campos `createdAt` e `updatedAt` quando a opção `timestamps` está habilitada ou desabilitada na definição da entidade. Além disso, a implementação atual não adiciona nem atualiza os campos `createdAt` e `updatedAt` corretamente. Isso pode levar a erros em tempo de execução e dificultar o desenvolvimento.
+
+### Problema:
+
+* **Tipagem Incorreta:** A interface `DriftEntityMethods` define os tipos de retorno dos métodos CRUD, mas não considera a opção `timestamps` da entidade. Quando `timestamps` é `true`, os métodos `create`, `createMany`, `update` e `updateMany` retornam objetos com os campos `createdAt` e `updatedAt`, mas a tipagem atual não reflete isso. Similarmente, quando `timestamps` é `false` ou não definido, a tipagem atual inclui incorretamente os campos `createdAt` e `updatedAt`.
+* **Implementação Incorreta:** A implementação atual dos métodos `create`, `createMany`, `update` e `updateMany` não adiciona ou atualiza os campos `createdAt` e `updatedAt` de acordo com a configuração `timestamps` da tabela.
+
+### Solução:
+
+A solução proposta envolve a criação de tipos auxiliares, a utilização de tipos condicionais para garantir que a tipagem dos métodos CRUD seja consistente com o comportamento da funcionalidade `timestamps` e a atualização da implementação dos métodos afetados para manipular corretamente os campos `createdAt` e `updatedAt`.
+
+### Etapas da Implementação:
+
+1. **Criar interfaces para timestamps e versionstamp:**
+   ```typescript
+   // types.ts
+   export interface WithTimestamps {
+     createdAt: Date;
+     updatedAt: Date;
+   }
+
+   export interface WithVersionstamp {
+     versionstamp: string;
+   }
+   ```
+
+2. **Criar tipos condicionais:**
+   ```typescript
+   // types.ts
+   export type EntityBase<T> = z.infer<T>;
+
+   export type EntityWithOptionalVersionstamp<T> = EntityBase<T> &
+     Partial<WithVersionstamp>;
+
+   export type EntityWithTimestampsAndOptionalVersionstamp<T> = WithTimestamps &
+     EntityWithOptionalVersionstamp<T>;
+
+   export type Entity<T> = T extends { options: { timestamps: true } }
+     ? EntityWithTimestampsAndOptionalVersionstamp<T["schema"]>
+     : EntityWithOptionalVersionstamp<T["schema"]>;
+   ```
+
+3. **Ajustar a interface `DriftEntityMethods`:**
+   ```typescript
+   // types.ts
+    export interface DriftEntityMethods<T extends DriftTableDefinition> {
+     // ... other methods
+     create: <Args extends DriftCreateArgs<T>>(args: Args) => Promise<Entity<T>>;
+     createMany: <Args extends DriftCreateManyArgs<T>>(
+       args: Args
+     ) => Promise<Entity<T>[]>;
+     update: <Args extends DriftUpdateArgs<T>>(args: Args) => Promise<Entity<T>>;
+     updateMany: <Args extends DriftUpdateArgs<T>>(
+       args: Args
+     ) => Promise<Entity<T>[]>;
+     // ... other methods
+   }
+   ```
+
+4. **Ajustar a classe `CrudManager`:**
+   ```typescript
+   // CrudManager.ts
+   // ...
+      // ... imports
+
+   async create<T extends DriftTableDefinition>(...): Promise<Entity<T>> {
+     // ... código
+     if (table.options?.timestamps) {
+       data.createdAt = new Date();
+       data.updatedAt = new Date();
+     }
+     // ... código
+   }
+
+   async createMany<T extends DriftTableDefinition>(...): Promise<Entity<T>[]> {
+     // ... código
+     if (table.options?.timestamps) {
+       data = data.map((item) => ({
+         ...item,
+         createdAt: new Date(),
+         updatedAt: new Date(),
+       }));
+     }
+     // ... código
+   }
+
+   async update<T extends DriftTableDefinition>(...): Promise<Entity<T>> {
+     // ... código
+     if (table.options?.timestamps) {
+       data.updatedAt = new Date();
+     }
+     // ... código
+   }
+
+   async updateMany<T extends DriftTableDefinition>(...): Promise<Entity<T>[]> {
+     // ... código
+     if (table.options?.timestamps) {
+       data = data.map((item) => ({ ...item, updatedAt: new Date() }));
+     }
+     // ... código
+   }
+   // ...
+   ```
+
+### Benefícios:
+
+* **Tipagem consistente:** Elimina a discrepância entre o tipo de retorno dos métodos e o resultado real, evitando erros em tempo de execução.
+* **Implementação correta:** Garante que os campos `createdAt` e `updatedAt` sejam manipulados corretamente.
+* **Melhor legibilidade:** Torna o código mais fácil de entender e manter.
+* **Segurança:** Permite que o TypeScript realize verificações de tipo mais precisas, prevenindo erros.
+
+### Testes:
+
+Após a implementação, os testes existentes devem ser revisados e atualizados para garantir que a nova tipagem e implementação não introduzam regressões. Novos testes devem ser adicionados para cobrir os cenários específicos da funcionalidade `timestamps`, incluindo casos onde `timestamps` é `true`, `false` e `undefined`. Devem ser testados os métodos `create`, `createMany`, `update` e `updateMany`.

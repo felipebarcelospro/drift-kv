@@ -23,12 +23,12 @@
     "queue",
     "plugins"
   ],
-  "exports": "./mod.ts",
+  "exports": "./src/index.ts",
   "publish": {
     "include": [
       "README.md",
       "LICENSE",
-      "mod.ts", 
+      "src/index.ts", 
       "src/**/*.ts"
     ],
     "exclude": [
@@ -37,8 +37,8 @@
     ]
   },
   "tasks": {
-    "check": "deno check mod.ts",
-    "build": "deno check mod.ts && deno fmt"
+    "check": "deno check src/index.ts",
+    "build": "deno check src/index.ts && deno fmt"
   },
   "fmt": {
     "include": ["src/"],

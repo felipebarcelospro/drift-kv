@@ -247,7 +247,7 @@ export function WaitlistDialog({ children }: { children: React.ReactNode }) {
                 asChild
               >
                 <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("I just joined the waitlist for Shadcn/UI Theme Creator for Chrome! Can't wait to try it out. #WebDev #UIDesign")}`}
+                  href={`https://x.com/intent/tweet?text=${encodeURIComponent("I just joined the waitlist for Shadcn/UI Theme Creator for Chrome! Can't wait to try it out. #WebDev #UIDesign")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

@@ -8,7 +8,7 @@ export interface ContentSection {
 
 export interface ContentMetadata {
   title: string;
-  type: "blog" | "docs" | "changelog";
+  type: "blog" | "docs";
   category: string;
   date: string;
   description: string;
@@ -23,12 +23,11 @@ export class FileSystemContentManager {
     contentDir: path.join(process.cwd(), "src/app/(content)"),
     extensions: [".mdx"],
     pageFile: "page.mdx",
-    // Regex to match Next.js app router special folders like (posts), [slug], etc
     appRouterGroupRegex: /^[(\[].+[\])]$/,
   };
 
   static async getNavigationItems(
-    contentType: "docs" | "blog" | "changelog",
+    contentType: "docs" | "blog",
   ): Promise<ContentSection[]> {
     try {
       const contentPath = path.join(this.config.contentDir, contentType);
@@ -88,13 +87,12 @@ export class FileSystemContentManager {
   }
 
   static async getAllNavigationItems(): Promise<ContentSection[]> {
-    const [docs, blog, changelog] = await Promise.all([
+    const [docs, blog] = await Promise.all([
       this.getNavigationItems("docs"),
-      this.getNavigationItems("blog"),
-      this.getNavigationItems("changelog"),
+      this.getNavigationItems("blog")
     ]);
 
-    return [...docs, ...blog, ...changelog];
+    return [...docs, ...blog];
   }
 
   private static async processGroupFolder(
@@ -237,7 +235,7 @@ export class FileSystemContentManager {
 
   private static async extractFrontmatter(
     content: string,
-    type: "blog" | "docs" | "changelog",
+    type: "blog" | "docs",
     filePath: string,
   ): Promise<ContentMetadata> {
     // First look for markdown title

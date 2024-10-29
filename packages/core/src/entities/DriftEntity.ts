@@ -1,90 +1,69 @@
 import { Kv, KvEntryMaybe } from "@deno/kv";
-import { z } from "zod";
 import { CrudManager } from "../core/CrudManager";
-import { Drift } from "../core/Drift";
-import { DriftPlugin } from "../core/Plugin";
 import { DriftWatcher } from "../core/Watcher";
 import { DriftError } from "../errors";
-import {
-  DriftCreateAndUpdateResponse,
-  DriftCreateArgs,
-  DriftCreateManyArgs,
-  DriftDeleteResponse,
-  DriftEntityHooks,
-  DriftEntityMethods,
-  DriftEntityOptions,
-  DriftQueryAction,
-  DriftQueryArgs,
-  DriftTableDefinition,
-  DriftUpdateArgs,
-  WithMaybeVersionstamp
-} from "../types";
-import { schemaToKeys } from "../utils";
+import { DriftEntity } from "../generators/DriftEntity";
+import { DriftCreateAndUpdateResponse, DriftCreateArgs, DriftCreateManyArgs, DriftDeleteResponse, DriftEntityHookContext, DriftEntityHooks, DriftEntityMethods, DriftQueryAction, DriftQueryArgs, DriftUpdateArgs, Entity, EntityInput } from "../types";
 
 /**
  * Main entity class that provides CRUD operations and real-time subscriptions
  * @see {@link https://github.com/yourusername/drift/blob/main/README.md#entity Entity Documentation}
  */
-export class DriftEntity<
-  T extends DriftEntityOptions<any>,
+export class DriftEntityManager<
+  T extends DriftEntity<any, any, any>,
 > implements DriftEntityMethods<T> {
-  private name: string;
-  private description?: string;
-  private options?: T['options'];  
-  private hooks?: T['hooks'];
-  private metadata: DriftTableDefinition<T['schema']>;
-  private drift: Drift;
-  private plugins: DriftPlugin[];
   private watcher: DriftWatcher<T>;
+  private crudManager: CrudManager<T>;
+  
   private kv: Kv;
-  private crudManager: CrudManager;
+  private entity: T;
 
-  constructor(drift: Drift, entity: DriftEntityOptions<any>) {
-    this.drift = drift;
-    this.plugins = drift.plugins;
-    this.name = entity.name;
-    this.description = entity.description;
-    this.hooks = entity.hooks;
-    this.kv = drift.client;
-    this.options = entity.options;
+  constructor({
+    entity,
+    client,
+  }: {
+    entity: T;
+    client: Kv;
+  }) {
+    this.kv = client;
+    this.entity = entity;
 
-    this.metadata = {
-      schema: entity.schema,
-      relations: entity.relations,
-    };
+    this.crudManager = new CrudManager<T>({
+      kv: client,
+      entity,
+    });
 
-    this.watcher = new DriftWatcher<T>(this.drift);
-    this.crudManager = new CrudManager(this.kv);
+    this.watcher = new DriftWatcher<T>({
+      entity,
+      client,
+      keyManager: this.crudManager.keyManager,
+    });
   }
 
   /** ===============================
    * Create Method
    * =============================== */
   public async create(params: DriftCreateArgs<T>) {
-    const { data } = params;
+    const { data } = params as { data: EntityInput<T> };
     const action: DriftQueryAction = "create";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, data: data });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", {
+    await this.executeHook("beforeQuery", {
       action,
-      data: data,
+      query: data,
+      entity: this.entity.name,
     });
 
     // Save data using CrudManager
-    const result = await this.crudManager.create(
-      this.name,
-      this.metadata,
-      params,
-    );
+    const result = await this.crudManager.create(params);
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", result);
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", result);
+    await this.executeHook("afterQuery", {
+      action,
+      query: data,
+      result,
+      entity: this.entity.name,
+    });
 
     // Return result with applied select/include
     return result;
@@ -97,26 +76,22 @@ export class DriftEntity<
     const action: DriftQueryAction = "findFirst";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", {
+    await this.executeHook("beforeQuery", {
       action,
-      params,
+      query: params,
+      entity: this.entity.name,
     });
 
     // Find data using CrudManager
-    const result = await this.crudManager.findFirst(
-      this.name,
-      this.metadata,
-      params,
-    );
+    const result = await this.crudManager.findFirst(params);
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", result);
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", result);
+    await this.executeHook("afterQuery", {
+      action,
+      query: params,
+      result,
+      entity: this.entity.name,
+    });
 
     // Return result with applied select/include
     return result;
@@ -129,74 +104,50 @@ export class DriftEntity<
     const action: DriftQueryAction = "deleteMany";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", {
+    await this.executeHook("beforeQuery", {
       action,
-      params,
+      query: params,
+      entity: this.entity.name,
     });
 
     // Delete data using CrudManager
-    await this.crudManager.remove(
-      this.name,
-      this.metadata,
-      params,
-    );
+    await this.crudManager.remove(params);
 
     // Execute afterQuery hooks
     await this.executeHook("afterQuery", {
-      status: "DELETED",
+      action,
+      query: params,
+      result: {
+        status: "DELETED",
+      },
+      entity: this.entity.name,
     });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", {
-      status: "DELETED",
-    });
-
-    // Return result
-    return {
-      status: 'DELETED'
-    };
   }
 
   /** ===============================
    * Create Many Method
    * =============================== */
-  public async createMany<Args extends DriftCreateManyArgs<T>>(params: Args): Promise<DriftCreateAndUpdateResponse<T>[]> {
-    const { data } = params;
+  public async createMany<Args extends DriftCreateManyArgs<T>>(query: Args): Promise<DriftCreateAndUpdateResponse<T>[]> {
     const action: DriftQueryAction = "createMany";
-
-    // Apply timestamps if enabled
-    if (this.options?.timestamps) {
-      const timestamp = new Date().toISOString();
-      for (const item of data) {
-        (item as any).createdAt = timestamp;
-        (item as any).updatedAt = timestamp;
-      }
-    }
+    const { data } = query as { data: EntityInput<T>[] };
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, data });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", {
+    await this.executeHook("beforeQuery", {
       action,
-      data,
+      query: data,
+      entity: this.entity.name,
     });
 
     // Save data using CrudManager
-    const result = await this.crudManager.createMany(
-      this.name,
-      this.metadata,
-      params,
-    );
+    const result = await this.crudManager.createMany(query);
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", result);
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", result);
+    await this.executeHook("afterQuery", {
+      action,
+      query: data,
+      result,
+      entity: this.entity.name,
+    });
 
     // Return result with applied select/include
     return result;
@@ -209,23 +160,22 @@ export class DriftEntity<
     const action: DriftQueryAction = "findUnique";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", { action, params });
+    await this.executeHook("beforeQuery", {
+      action,
+      query: params,
+      entity: this.entity.name,
+    });
 
     // Get data using CrudManager
-    const result = await this.crudManager.findUnique<typeof this.metadata>(
-      this.name,
-      this.metadata,
-      params,
-    );
+    const result = await this.crudManager.findUnique<T>(params);
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", result);
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", result);
+    await this.executeHook("afterQuery", {
+      action,
+      query: params,
+      result,
+      entity: this.entity.name,
+    });
 
     // Return result with applied select/include
     return result ?? null;
@@ -234,27 +184,26 @@ export class DriftEntity<
   /** ===============================
    * Find Many Method
    * =============================== */
-  public async findMany(params: DriftQueryArgs<T>) {
+  public async findMany(params?: DriftQueryArgs<T>) {
     const action: DriftQueryAction = "findMany";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", { action, params });
+    await this.executeHook("beforeQuery", {
+      action,
+      query: params,
+      entity: this.entity.name,
+    });
 
     // Get records using CrudManager
-    let results = await this.crudManager.findMany<typeof this.metadata>(
-      this.name,
-      this.metadata,
-      params,
-    );
+    let results = await this.crudManager.findMany<T>(params);
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", results);
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", results);
+    await this.executeHook("afterQuery", {
+      action,
+      query: params,
+      result: results,
+      entity: this.entity.name,
+    });
 
     // Return results with applied select/include
     return results;
@@ -267,18 +216,14 @@ export class DriftEntity<
     const action: DriftQueryAction = "update";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", { action, params });
+    await this.executeHook("beforeQuery", {
+      action,
+      query: params,
+      entity: this.entity.name,
+    });
 
     // Get existing data
-    const existing = await this.crudManager.findUnique<typeof this.metadata>(
-      this.name,
-      this.metadata,
-      params,
-    );
-
+    const existing = await this.crudManager.findUnique<T>(params);
     if (!existing) {
       throw new Error("Record not found");
     }
@@ -287,16 +232,24 @@ export class DriftEntity<
     const updated = await this.updateMany({
       where: { id: existing.id },
       data: params.data,
-    });
+    });    
 
     // Execute afterQuery hooks
-    await this.executeHook("afterQuery", updated);
+    await this.executeHook("afterQuery", {
+      action,
+      query: params,
+      result: updated,
+      entity: this.entity.name,
+    });
 
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", updated);
+    const recordUpdated = updated?.[0]
+
+    if(!recordUpdated) {
+      throw new Error("Record not found");
+    }
 
     // Return result with applied select/include
-    return updated[0];
+    return recordUpdated;
   }
 
   /** ===============================
@@ -306,53 +259,53 @@ export class DriftEntity<
     const action: DriftQueryAction = "updateMany";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
+    await this.executeHook("beforeQuery", {
+      action,
+      query: params,
+      entity: this.entity.name,
+    });
 
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", { action, params });
-
-    const keys = schemaToKeys(
-      this.name,
-      this.metadata.schema as z.ZodObject<z.ZodRawShape, "strip", z.ZodTypeAny, { [x: string]: any; }, { [x: string]: any; }>,
+    const keys = this.crudManager.keyManager.schemaToKeys(
       params.where ?? [],
     );
+
+    const indexPrefixes = this.crudManager.keyManager.getIndexPrefixes();
+
     const items = await this.crudManager.keyManager.keysToItems(
       this.kv,
-      this.name,
       keys,
       params.where,
-      this.crudManager.keyManager.getIndexPrefixes(
-        this.name,
-        this.metadata.schema,
-      ),
+      indexPrefixes,
     );
 
     if (items.length === 0) {
-      return;
+      return [];
     }
 
     try {
       const updatedItems = items.map((existingItem) => ({
         key: existingItem.key,
-        value: this.metadata.schema.parse({
+        versionstamp: params.data.versionstamp ?? existingItem.versionstamp,
+        value: this.entity.schema.parse({
           ...existingItem.value,
           ...params.data,
         }),
-        versionstamp: params.data.versionstamp ?? existingItem.versionstamp,
       }));
 
       const updatedRecords = await this.crudManager.update(
-        updatedItems as KvEntryMaybe<z.output<typeof this.metadata.schema>>[],
+        updatedItems as KvEntryMaybe<Entity<T>>[],
       );
 
       // Execute afterQuery hooks
-      await this.executeHook("afterQuery", updatedRecords);
-
-      // Intercept query via plugins
-      await this.executePluginIntercepts("afterExecute", updatedRecords);
+      await this.executeHook("afterQuery", {
+        action,
+        query: params,
+        result: updatedRecords,
+        entity: this.entity.name,
+      });
 
       // Return results with applied select/include
-      return updatedRecords;
+      return updatedRecords as DriftCreateAndUpdateResponse<T>[];
     } catch {
       throw new DriftError(`An error occurred while updating items`);
     }
@@ -361,43 +314,37 @@ export class DriftEntity<
   /** ===============================
    * Delete Method
    * =============================== */
-  public async delete(params: DriftQueryArgs<T>) {
+  public async delete(query: DriftQueryArgs<T>) {
     const action: DriftQueryAction = "delete";
 
     // Execute beforeQuery hooks
-    await this.executeHook("beforeQuery", { action, params });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("beforeExecute", { action, params });
+    await this.executeHook("beforeQuery", { 
+      action,
+      query,
+      entity: this.entity.name,
+    });
 
     // Get existing data
-    const existing = await this.crudManager.findFirst<typeof this.metadata>(
-      this.name,
-      this.metadata,
-      params,
-    );
+    const existing = await this.crudManager.findFirst<T>(query);
     if (!existing) {
-      return null;
+      throw new Error("Record not found");
     }
 
     // Delete record using CrudManager
-    await this.crudManager.remove(this.name, this.metadata, {
+    await this.crudManager.remove({
       where: { id: existing.id },
     });
 
     // Execute afterQuery hooks
     await this.executeHook("afterQuery", {
-      id: existing.id,
-      status: "DELETED",
+      entity: this.entity.name,
+      action: "delete",
+      query,
+      result: {
+        id: existing.id,
+        status: "DELETED",
+      },
     });
-
-    // Intercept query via plugins
-    await this.executePluginIntercepts("afterExecute", {
-      id: existing.id,
-      status: "DELETED",
-    });
-
-    return null;
   }
 
   /** ===============================
@@ -408,28 +355,13 @@ export class DriftEntity<
    * Executes entity hooks
    * @private
    */
-  private async executeHook(hookName: keyof DriftEntityHooks, params: any) {
-    if (this.hooks && this.hooks[hookName]) {
-      await this.hooks[hookName]!(params, this);
-    }
-  }
-
-  /**
-   * Executes plugin intercepts
-   * @private
-   */
-  private async executePluginIntercepts(
-    interceptName: "beforeExecute" | "afterExecute",
-    data: any,
-  ) {
-    for (const plugin of this.plugins) {
-      if (plugin.query) {
-        const result = await plugin.query(data.action, data, this);
-
-        if (result !== undefined) {
-          return result;
-        }
-      }
+  private async executeHook(hookName: keyof DriftEntityHooks<T>, params: DriftEntityHookContext) {
+    if (this.entity.hooks && this.entity.hooks[hookName]) {
+      await this.entity.hooks[hookName]!(params.query, {
+        entity: this.entity.name,
+        action: params.action,
+        query: params.query,
+      });
     }
   }
 
@@ -448,14 +380,10 @@ export class DriftEntity<
    * @param callback Function called with changes
    */
   public watch(params: {
-    where?: Partial<
-      WithMaybeVersionstamp<z.output<typeof this.metadata.schema>>
-    >;
-    callback: (changes: z.output<typeof this.metadata.schema> | null) => void;
+    where?: Partial<Entity<T>>;
+    callback: (changes: Entity<T> | null) => void;
   }) {
     return this.watcher.watch(
-      this.name,
-      this.metadata,
       params,
       params.callback,
     );

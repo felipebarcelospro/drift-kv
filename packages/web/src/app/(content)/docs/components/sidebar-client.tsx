@@ -49,7 +49,7 @@ export function SidebarClient({ sidebarItems }: SidebarClientProps) {
                     )}
                   >
                     <Link
-                      href={item.slug}
+                      href={`/docs/${item.slug}`}
                       className="truncate"
                       title={item.title}
                     >

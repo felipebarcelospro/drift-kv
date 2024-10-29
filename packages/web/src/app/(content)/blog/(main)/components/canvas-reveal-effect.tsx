@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTheme } from "next-themes";
 import React, { useMemo, useRef } from "react";
 import * as THREE from "three";
 
@@ -120,27 +119,24 @@ export const CanvasRevealEffect = ({
   dotSize,
   showGradient = true,
 }: CanvasRevealProps) => {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const currentTheme = isDark ? THEMES.dark : THEMES.light;
+  const currentTheme = THEMES.dark;
 
-  const themeColors = useMemo(() => currentTheme.colors, [isDark]);
   const themeOpacities = useMemo(
     () => opacities.map((o) => o * currentTheme.opacityMultiplier),
-    [isDark, opacities],
+    [currentTheme, opacities],
   );
 
   return (
     <div
       className={cn(
         "h-full relative w-full",
-        isDark ? "bg-black" : "bg-white",
+        "bg-background",
         containerClassName,
       )}
     >
       <div className="h-full w-full">
         <DotMatrix
-          colors={themeColors}
+          colors={currentTheme.colors}
           dotSize={dotSize ?? 3}
           opacities={themeOpacities}
           shader={`
@@ -156,7 +152,7 @@ export const CanvasRevealEffect = ({
         <div
           className={cn(
             "absolute inset-0 bg-gradient-to-t",
-            isDark ? "from-gray-950" : "from-gray-50",
+            "from-background",
             "to-[84%]",
           )}
         />

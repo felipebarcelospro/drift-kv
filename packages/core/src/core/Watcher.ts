@@ -5,23 +5,37 @@
 
 import { Kv } from "@deno/kv";
 import { z } from "zod";
-import { DriftTableDefinition, WithMaybeVersionstamp } from "../types";
-import { schemaToKeys } from "../utils";
+import { DriftEntity } from "../generators/DriftEntity";
+import { DriftWatchParams } from "../types";
 import { Drift } from "./Drift";
+import { KeyManager } from "./KeyManager";
 /**
  * DriftWatcher class for monitoring real-time changes to entities
  * @class DriftWatcher
  * @template T Entity type being watched
  */
-export class DriftWatcher<T extends DriftTableDefinition> {
+export class DriftWatcher<T extends DriftEntity<any, any, any>> {
   private kv: Kv;
+  private entity: T;
+  private keyManager: KeyManager<T>;
+  
   /**
    * Creates a new DriftWatcher instance
    * @param {Drift} drift - Drift instance
    * @param {DriftEntity<T>} entity - Entity to watch
    */
-  constructor(drift: Drift) {
-    this.kv = drift.client;
+  constructor({
+    entity,
+    client,
+    keyManager,
+  }: {
+    entity: T;
+    client: Kv;
+    keyManager: KeyManager<T>;
+  }) {
+    this.kv = client;
+    this.entity = entity;
+    this.keyManager = keyManager;
   }
 
   /**
@@ -34,18 +48,10 @@ export class DriftWatcher<T extends DriftTableDefinition> {
    * @returns {{promise: Promise<void>, cancel: () => Promise<void>}} Promise and cancel function
    */
   public watch(
-    tableName: string,
-    tableDefinition: DriftTableDefinition,
-    queryArgs: {
-      where?: Partial<
-        WithMaybeVersionstamp<z.output<typeof tableDefinition.schema>>
-      >;
-    },
+    queryArgs: DriftWatchParams<T>,
     callback: (changes: T | null) => void,
   ) {
-    const keys = schemaToKeys(
-      tableName,
-      tableDefinition.schema,
+    const keys = this.keyManager.schemaToKeys(
       queryArgs.where ?? [],
     );
 
@@ -58,7 +64,7 @@ export class DriftWatcher<T extends DriftTableDefinition> {
 
     const promise = (async () => {
       try {
-        const stream = this.kv.watch(keys.map(({ kvKey }) => kvKey));
+        const stream = this.kv.watch(keys.map((key) => key.kv));
         // @ts-ignore
         for await (const entries of stream) {
           if (cancelled) break;

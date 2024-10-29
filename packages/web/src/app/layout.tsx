@@ -2,7 +2,6 @@ import "./globals.css";
 
 import { Footer } from "@/app/(shared)/components/footer";
 import { Header } from "@/app/(shared)/components/header";
-import { ThemeProvider } from "@/components/ui/theme-provider";
 import { config } from "@/configs/application";
 import { githubService } from "@/lib/github";
 import { cn } from "@/lib/utils";
@@ -38,14 +37,10 @@ export default async function RootLayout({
       <body
         className={cn(geistSans.variable, geistMono.variable, "antialiased")}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark">
-          <Header repoInfo={repoInfo} />
-          <GoogleAnalytics
-            gaId={process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID ?? ""}
-          />
-          <div>{children}</div>
-          <Footer />
-        </ThemeProvider>
+        <Header repoInfo={repoInfo} />
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID ?? ""} />
+        <div>{children}</div>
+        <Footer />
       </body>
     </html>
   );

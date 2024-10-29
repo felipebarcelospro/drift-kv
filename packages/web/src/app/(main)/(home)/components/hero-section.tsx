@@ -53,7 +53,7 @@ export function HeroSection() {
       </motion.p>
 
       <motion.h1
-        className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6 md:mb-8 !leading-snug md:max-w-3xl mx-auto"
+        className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6 md:mb-8 !leading-snug md:max-w-3xl mx-auto text-background-foreground"
         variants={{
           hidden: { opacity: 0, y: 20 },
           visible: { opacity: 1, y: 0 },
@@ -73,7 +73,7 @@ export function HeroSection() {
       </motion.p>
 
       <motion.div
-        className="container mx-auto max-w-5xl"
+        className="container mx-auto max-w-screen-md"
         variants={{
           hidden: { opacity: 0, y: 20 },
           visible: { opacity: 1, y: 0 },

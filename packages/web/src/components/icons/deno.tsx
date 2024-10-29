@@ -1,4 +1,3 @@
-import { useTheme } from "next-themes";
 import type { SVGProps } from "react";
 const DenoLight = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -33,12 +32,5 @@ const DenoDark = (props: SVGProps<SVGSVGElement>) => (
 );
 
 export default function Deno(props: SVGProps<SVGSVGElement>) {
-  const { theme } = useTheme();
-
-  const Component = {
-    dark: DenoDark,
-    light: DenoLight,
-  } as const;
-
-  return Component[(theme as "dark") || "light"];
+  return <DenoDark {...props} />;
 }

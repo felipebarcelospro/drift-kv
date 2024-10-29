@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="container mx-auto max-w-6xl px-4">
+    <div className="container md:max-w-screen-lg">
       <HeroSection />
       <FeaturesSection />
       <CTASection />

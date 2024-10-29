@@ -3,16 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.2,
-    },
-  },
-};
-
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -64,7 +54,7 @@ function CTALogo() {
     >
       <motion.img
         src="https://mediaresource.sfo2.digitaloceanspaces.com/wp-content/uploads/2024/04/20161105/shadcn-ui-logo-EF735EC0E5-seeklogo.com.png"
-        className="w-20 h-20 invert-0 dark:invert"
+        className="w-20 h-20 invert"
         alt="Shadcn/UI UI Logo"
         whileHover={{
           scale: 1.05,

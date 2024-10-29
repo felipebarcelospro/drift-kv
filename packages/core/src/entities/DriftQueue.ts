@@ -8,42 +8,33 @@
  */
 
 import { Kv } from "@deno/kv";
-import { z, ZodSchema } from "zod";
-import { Drift } from "../core/Drift";
-import { Awaitable, DriftQueueHooks, DriftQueueJobParams, DriftQueueOptions } from "../types";
-
+import { DriftQueue } from "../generators/DriftQueue";
+import { DriftQueueHooks, DriftQueueWorkerParams, QueueInput } from "../types";
 
 /**
  * DriftQueue class for managing job queues
  * @template T The type of job data
  */
-export class DriftQueue<
-  T extends ZodSchema<any>,
-  K extends string = string,
-  O = Awaitable<ReturnType<DriftQueueOptions<T>["handler"]>>
+export class DriftQueueManager<
+  T extends DriftQueue<any, any, any, any, any>,
 > {
-  public name: string;
-  public description?: string;
-  public schema: ZodSchema<T>;
-  public options?: DriftQueueOptions<T>["options"];
-  public hooks?: DriftQueueHooks<T, O>;
-
-  private handler: DriftQueueOptions<T>["handler"];
-  private kv: Kv;
+  kv: Kv;
+  queue: T;
 
   /**
    * Creates a new DriftQueue instance
    * @param drift The Drift KV instance
    * @param options Queue configuration options
    */
-  constructor(drift: Drift, options: DriftQueueOptions<T>) {
-    this.name = options.name;
-    this.description = options.description;
-    this.schema = options.schema;
-    this.options = options.options;
-    this.hooks = options.hooks;
-    this.handler = options.handler;
-    this.kv = drift.client;
+  constructor({
+    queue,
+    client,
+  }: {
+    queue: T;
+    client: Kv;
+  }) {
+    this.queue = queue;
+    this.kv = client;
   }
 
   /** ===============================
@@ -54,17 +45,16 @@ export class DriftQueue<
    * @param params Object containing job name and data
    */
   public async schedule(params: {
-    topic: K;
-    data: z.output<T>;
+    data: QueueInput<T['schema']>;
     options?: { delay?: number };
   }) {
-    const { topic, data, options } = params;
+    const { data, options } = params;
 
     // Validate data using Zod
-    const validatedData = this.schema.parse(data);
+    const validatedData = this.queue.schema.parse(data);
 
     // Execute onBeforeEnqueue hook
-    if (this.hooks?.onJobBeforeSchedule) {
+    if (this.queue.hooks?.onJobBeforeSchedule) {
       await this.executeHook({
         hookName: "onJobBeforeSchedule",
         args: [validatedData],
@@ -74,14 +64,14 @@ export class DriftQueue<
     // Enqueue job
     const result = await this.kv.enqueue(
       {
-        topic: topic,
+        topic: this.queue.name,
         data: validatedData,
       },
       options,
     );
 
     // Execute onJobSchedule hook
-    if (this.hooks?.onJobSchedule) {
+    if (this.queue.hooks?.onJobSchedule) {
       await this.executeHook({
         hookName: "onJobSchedule",
         args: [validatedData],
@@ -89,14 +79,14 @@ export class DriftQueue<
     }
 
     return {
-      topic: topic,
-      success: result.ok,
-      versionstamp: result.versionstamp,
+      id: data.id,
+      status: result.ok ? "SCHEDULED" : "ERROR",
+      topic: this.queue.name
     };
   }
 
   public async registerHooks(hooks: DriftQueueHooks<T>) {
-    this.hooks = hooks;
+    this.queue.hooks = hooks;
   }
 
   /** ===============================
@@ -109,51 +99,45 @@ export class DriftQueue<
    * @param options Processing options for the job
    */
   public async process(
-    input: DriftQueueJobParams<T, O>
+    input: DriftQueueWorkerParams<{
+      handler: T['handler'],
+      schema: T['schema'],
+    }>
   ) {
     const { data, hooks } = input;
-    console.log("Starting job:", data);
   
     try {
       // Execute onJobBeforeSchedule hook
       if (hooks?.onJobBeforeSchedule) {
-        console.log("Executing onJobBeforeSchedule hook");
         await this.executeHook({ hookName: "onJobBeforeSchedule", args: [data], workerHooks: hooks });
       }
 
       // Execute onJobSchedule hook
       if (hooks?.onJobSchedule) {
-        console.log("Executing onJobSchedule hook");
         await this.executeHook({ hookName: "onJobSchedule", args: [data], workerHooks: hooks });
       }
 
       // Execute onJobStart hook
       if (hooks?.onJobStart) {
-        console.log("Executing onJobStart hook");
         await this.executeHook({ hookName: "onJobStart", args: [data], workerHooks: hooks });
       }
-
-      console.log("Executing job handler");
   
       // Execute job handler
-      await this.handler(data.data);
+      await this.queue.handler(data.data);
       
   
       // Execute onJobEnd hook
       if (hooks?.onJobEnd) {
-        console.log("Executing onJobEnd hook");
         await this.executeHook({ hookName: "onJobEnd", args: [data], workerHooks: hooks });
       }
     } catch (error) {
       // Execute onJobError hook
       if (hooks?.onJobError) {
-        console.log("Executing onJobError hook");
         await this.executeHook({ hookName: "onJobError", args: [error, data], workerHooks: hooks });
       }
     } finally {
       // Execute onJobEnd hook
       if (hooks?.onJobEnd) {
-        console.log("Executing onJobEnd hook");
         await this.executeHook({ hookName: "onJobEnd", args: [data], workerHooks: hooks });
       }
     }
@@ -171,11 +155,9 @@ export class DriftQueue<
   }: {
     hookName: string;
     args: unknown[];
-    workerHooks?: Partial<DriftQueueHooks<T, O>>;
+    workerHooks?: Partial<DriftQueueHooks<T>>;
   }) {
-    const hooks = { ...this.hooks, ...workerHooks };
-    console.log("hooks", hooks);
-
+    const hooks = { ...this.queue.hooks, ...workerHooks };
     if (hooks[hookName]) {
       const hookFunctions = Array.isArray(hooks[hookName]) ? hooks[hookName] : [hooks[hookName]];
       for (const hookFunction of hookFunctions) {

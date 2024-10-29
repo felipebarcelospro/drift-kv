@@ -218,7 +218,7 @@ export function QuickSteps() {
             >
               <Button
                 onClick={() => setActiveTab(tab.id)}
-                variant={activeTab === tab.id ? "default" : "ghost"}
+                variant={activeTab === tab.id ? "outline" : "ghost"}
                 className="flex items-center transition-all duration-300 ease-in-out"
               >
                 {tab.icon}

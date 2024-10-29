@@ -63,7 +63,7 @@ const CodeBlock = React.forwardRef<
           ref={ref}
           className={cn(
             "relative border border-border rounded-md overflow-hidden shadow-md transition-colors duration-300",
-            copied ? "bg-green-50 dark:bg-green-950" : "bg-background",
+            copied ? "bg-green-950" : "bg-background",
             className,
           )}
           {...props}
@@ -199,14 +199,14 @@ const CodeBlockContent = React.forwardRef<
     const { theme } = useTheme();
 
     const codeTheme = {
-      backgroundColor: theme === "dark" ? "#111" : "#f5f5f5",
-      textColor: theme === "dark" ? "#abb2bf" : "#383a42",
-      lineNumberColor: theme === "dark" ? "#6272a4" : "#9d9d9f",
-      keywordColor: theme === "dark" ? "#c678dd" : "#a626a4",
-      stringColor: theme === "dark" ? "#98c379" : "#50a14f",
-      functionColor: theme === "dark" ? "#61afef" : "#4078f2",
-      variableColor: theme === "dark" ? "#e06c75" : "#e45649",
-      substringColor: theme === "dark" ? "#e06c75" : "#e45649",
+      backgroundColor: "#111",
+      textColor: "#abb2bf",
+      lineNumberColor: "#6272a4",
+      keywordColor: "#c678dd",
+      stringColor: "#98c379",
+      functionColor: "#61afef",
+      variableColor: "#e06c75",
+      substringColor: "#e06c75",
     };
 
     return (
@@ -231,7 +231,7 @@ const CodeBlockContent = React.forwardRef<
           <div
             className={cn(
               "absolute inset-0 opacity-50 transition-opacity duration-500",
-              theme === "dark" ? "bg-green-950" : "bg-green-50",
+              "bg-green-950"
             )}
           />
         )}
@@ -270,5 +270,6 @@ export {
   CodeBlock,
   CodeBlockContent,
   CodeBlockHeader,
-  ConnectedCodeBlockContent,
+  ConnectedCodeBlockContent
 };
+

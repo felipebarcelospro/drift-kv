@@ -21,7 +21,7 @@ curl -fsSL https://deno.land/x/install/install.sh | sh
 Next, install Drift KV in your Next.js project:
 
 ```bash
-npm install drift-kv
+npm install @drift-kv/core
 ```
 
 ## Integrating Drift KV with Next.js 15
@@ -30,7 +30,7 @@ Next.js 15 introduces several new features that work seamlessly with Drift KV. L
 
 ```typescript
 // pages/api/db.ts
-import { Drift } from 'drift-kv';
+import { Drift } from '@drift-kv/core';
 import { z } from 'zod';
 
 const drift = new Drift({
@@ -79,7 +79,7 @@ Deno 2 brings improved performance and better compatibility with npm packages. H
 ```typescript
 // server.ts
 import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
-import { Drift } from "https://deno.land/x/drift/mod.ts";
+deno add jsr:@drift-kv/core;
 
 const drift = new Drift({
   client: await Deno.openKv(),
@@ -134,7 +134,7 @@ export default function Home() {
 ```typescript
 // deno-backend/server.ts
 import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
-import { Drift } from "https://deno.land/x/drift/mod.ts";
+deno add jsr:@drift-kv/core;
 
 const drift = new Drift({
   client: await Deno.openKv(),

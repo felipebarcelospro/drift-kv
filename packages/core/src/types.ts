@@ -1,6 +1,29 @@
-import { Kv, KvKey } from "@deno/kv";
+import { KvKey, KvKeyPart } from "@deno/kv";
 import { z, ZodSchema } from "zod";
-import { KeyPropertySchema } from "./utils";
+import { KeyManager } from "./core/KeyManager";
+import { DriftEntity } from "./generators/DriftEntity";
+import { DriftQueue } from "./generators/DriftQueue";
+
+/********************/
+/*                  */
+/*  HELPER TYPES     */
+/*                  */
+/********************/
+
+export type Awaitable<T> = T | Promise<T>;
+
+export type SchemaRawShape<T extends z.ZodRawShape = z.ZodRawShape> = T;
+export type SchemaRawShapeOutput<T extends SchemaRawShape> = z.output<SchemaRawShapeToObject<T>>;
+export type SchemaRawShapeToObject<T extends SchemaRawShape> = z.ZodObject<T>;
+
+export type SchemaObject<T extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>> = T;
+export type SchemaObjectOutput<T extends z.ZodObject<z.ZodRawShape>> = z.infer<T>;
+export type SchemaObjectInput<T extends z.ZodObject<z.ZodRawShape>> = z.input<T>;
+
+export type SchemaAny = z.ZodType<any, any, any>;
+export type SchemaRawField = z.ZodTypeAny;
+export type SchemaOptionalRawField<T extends SchemaRawField> = z.ZodOptional<T>;
+export type SchemaRawFieldOutput<T extends SchemaRawField> = z.output<T>;
 
 /********************/
 /*                  */
@@ -8,154 +31,59 @@ import { KeyPropertySchema } from "./utils";
 /*                  */
 /********************/
 
-export type DriftQueueJob<T = any, O = any> = {
+export type DriftQueueHandler<T extends SchemaObject> = (data: SchemaObjectOutput<T>) => Promise<void>;
+export type QueueInput<T extends SchemaObject> = SchemaObjectOutput<T>;
+
+export type DriftQueueJob<T extends DriftQueue<any, any, any, any, any>> = {
   topic: string;
   status: "scheduled" | "processing" | "completed" | "failed";
-  input: T;
+  input: SchemaObjectOutput<T['schema']>;
+  output?: Awaitable<ReturnType<T['handler']>>;
 
   error?: Error;
-  output?: O;
 
   scheduledAt: Date;
   startedAt?: Date;
   completedAt?: Date;
 };
 
-export type DriftQueueJobOptions = {
-  timeout?: number;
+export type DriftQueueHandlerDefinition<T extends SchemaObject> = {
+  schema: T;
+  handler: DriftQueueHandler<T>;
 }
 
-export type DriftQueueJobParams<T = any, O = any> = {
-  data: {
-    topic: string;
-    data: T;
-  };
-  options?: DriftQueueJobOptions;
-  hooks?: Partial<DriftQueueHooks<T, O>>;
+export type DriftQueueWorkerParams<T extends DriftQueueHandlerDefinition<any>> = {
+  data: SchemaObjectOutput<T['schema']>;
+  hooks?: Partial<DriftQueueHooks<typeof this.handler>>;
 }
 
-/**
- * Type helper to extract input and output types from DriftQueueHooks.
- */
-export type Awaitable<T> = T | Promise<T>;
-
-export type ExtractQueueHookTypes<T extends DriftQueueOptions<any, any>> = {
-  input: z.output<T["schema"]>;
+export type ExtractQueueHookTypes<T extends DriftQueueHandlerDefinition<any>> = {
+  input: SchemaObjectOutput<T["schema"]>;
   output: Awaitable<ReturnType<T["handler"]>>;
 };
 
-/**
- * Interface defining lifecycle hooks for queue operations.
- *
- * @interface DriftQueueHooks
- * @template T - The type of job data.
- * @template O - The type of job output.
- */
-export interface DriftQueueHooks<T, O = any> {
-  /**
-   * Called before a job is scheduled.
-   *
-   * @param {DriftQueueJob<T, Awaitable<O>>} job - The job data to be scheduled.
-   * @returns {Promise<void>}
-   */
-  onJobBeforeSchedule?: (job: DriftQueueJob<T, Awaitable<O>>) => Promise<void>;
+export type WorkerQueueHooks<T extends DriftQueue<any, any, any, any, any>> = {
+  onWorkerStart?: () => Promise<void>;
+  onWorkerEnd?: () => Promise<void>;
+  onWorkerError?: (error: Error) => Promise<void>;
+} & DriftQueueHooks<T>
 
-  /**
-   * Called when a job is scheduled.
-   *
-   * @param {DriftQueueJob<T, Awaitable<O>>} job - The job data that was scheduled.
-   * @returns {Promise<void>}
-   */
-  onJobSchedule?: (job: DriftQueueJob<T, Awaitable<O>>) => Promise<void>;
-
-  /**
-   * Called when a job starts processing.
-   *
-   * @param {DriftQueueJob<T, Awaitable<O>>} job - The job data being processed.
-   * @returns {Promise<void>}
-   */
-  onJobStart?: (job: DriftQueueJob<T, Awaitable<O>>) => Promise<void>;
-
-  /**
-   * Called when a job ends.
-   *
-   * @param {DriftQueueJob<T, Awaitable<O>>} job - The result of the job processing.
-   * @returns {Promise<void>}
-   */
-  onJobEnd?: (job: DriftQueueJob<T, Awaitable<O>>) => Promise<void>;
-
-  /**
-   * Called when a job encounters an error.
-   *
-   * @param {DriftQueueJob<T, Awaitable<O>>} job - The job data that encountered the error.
-   * @returns {Promise<void>}
-   */
-  onJobError?: (job: DriftQueueJob<T, Awaitable<O>>) => Promise<void>;
+export interface DriftQueueHooks<
+  T extends DriftQueue<any, any, any, any, any>
+> {
+  onJobBeforeSchedule?: (job: DriftQueueJob<T>) => Promise<void>;
+  onJobSchedule?: (job: DriftQueueJob<T>) => Promise<void>;
+  onJobStart?: (job: DriftQueueJob<T>) => Promise<void>;
+  onJobEnd?: (job: DriftQueueJob<T>) => Promise<void>;
+  onJobError?: (job: DriftQueueJob<T>) => Promise<void>;
 }
 
-/**
- * Interface defining configuration options for creating a new queue.
- *
- * @interface DriftQueueOptions
- * @template T - The type of job data.
- */
-export interface DriftQueueOptions<T = any, O = any> {
-  /**
-   * Unique name identifier for the queue.
-   *
-   * @type {string}
-   */
+export interface DriftQueueOptions<T extends DriftQueue<any, any, any, any, any>> {
   name: string;
-
-  /**
-   * Optional description of the queue's purpose.
-   *
-   * @type {string}
-   */
   description?: string;
-
-  /**
-   * Zod schema for validating job data.
-   *
-   * @type {ZodSchema<T>}
-   */
   schema: ZodSchema<T>;
-
-  /**
-   * Additional queue configuration options.
-   *
-   * @type {Object}
-   */
-  options?: {
-    /**
-     * Number of retry attempts for failed jobs.
-     *
-     * @type {number}
-     */
-    retryAttempts?: number;
-
-    /**
-     * Timeout duration for job processing.
-     *
-     * @type {number}
-     */
-    timeout?: number;
-  };
-
-  /**
-   * Lifecycle hooks for queue events.
-   *
-   * @type {DriftQueueHooks<T, O>}
-   */
-  hooks?: DriftQueueHooks<T, O>;
-
-  /**
-   * Main job processing function.
-   *
-   * @param {T} data - The job data to be processed.
-   * @returns {Promise<O>}
-   */
-  handler: (data: T) => Promise<O>;
+  hooks?: DriftQueueHooks<T>;
+  handler: (data: T) => Promise<void>;
 }
 
 /********************/
@@ -164,449 +92,123 @@ export interface DriftQueueOptions<T = any, O = any> {
 /*                  */
 /********************/
 
-/**
- * Parameters for watching data changes.
- * @template T - The type of data being watched.
- */
-export interface DriftWatchParams<T> {
-  /** Fields to select from the data. */
-  select?: { [K in keyof T]?: boolean };
-
-  /** Related data to include. */
-  include?: {
-    [K in keyof T]?:
-      | boolean
-      | {
-          /** Fields to select from the included data. */
-          select?: { [K2 in keyof T[K]]?: boolean };
-
-          /** Conditions for filtering included data. */
-          where?: { [K2 in keyof T[K]]?: any };
-
-          /** Order of the included data. */
-          orderBy?: { [K2 in keyof T[K]]?: "asc" | "desc" };
-
-          /** Number of records to skip. */
-          skip?: number;
-
-          /** Number of records to take. */
-          take?: number;
-        };
-  };
-
-  /** Conditions for filtering the main data. */
-  where?: { [K in keyof T]?: any };
-
-  /** Order of the main data. */
-  orderBy?: { [K in keyof T]?: "asc" | "desc" };
-
-  /** Distinct fields to return. */
-  distinct?: Array<keyof T>;
+export interface DriftWatchParams<T extends DriftEntity<any, any, any>> {
+  where?: Partial<Entity<T>>;
 }
 
 /********************/
 /*                  */
-/*  DRIFT TYPES     */
+/*  ENTITY TYPES     */
 /*                  */
 /********************/
 
-/**
- * Drift Methods Interface for performing CRUD operations.
- * @template T - The type of table definition.
- */
-export interface DriftEntityMethods<T extends DriftTableDefinition> {
-  /** Finds the first record matching the given arguments. */
-  findFirst: <Args extends DriftQueryArgs<T>>(
-    args: Args,
-  ) => Promise<QueryResponse<T, Args>>;
-
-  /** Finds multiple records matching the given arguments. */
-  findMany: <Args extends DriftQueryArgs<T>>(
-    args: Args,
-  ) => Promise<Array<QueryResponse<T, Args>>>;
-
-  /** Creates a new record. */
-  create: <Args extends DriftCreateArgs<T>>(
-    args: Args,
-  ) => Promise<DriftCreateAndUpdateResponse<T>>;
-
-  /** Creates multiple new records. */
-  createMany: <Args extends DriftCreateManyArgs<T>>(
-    args: Args,
-  ) => Promise<DriftCreateAndUpdateResponse<T>[]>;
-
-  /** Updates an existing record. */
-  update: <Args extends DriftUpdateArgs<T>>(
-    args: Args,
-  ) => Promise<DriftCreateAndUpdateResponse<T>>;
-
-  /** Deletes a record. */
-  delete: <Args extends DriftQueryArgs<T>>(
-    args: Args,
-  ) => Promise<DriftDeleteResponse>;
-
-  /** Deletes multiple records. */
-  deleteMany: <Args extends DriftQueryArgs<T>>(
-    args: Args,
-  ) => Promise<DriftDeleteResponse>;
-
-  /** Updates multiple records. */
-  updateMany: <Args extends DriftUpdateArgs<T>>(
-    args: Args,
-  ) => Promise<DriftCreateAndUpdateResponse<T>[]>;
-
-  /** Finds a unique record matching the given arguments. */
-  findUnique: <Args extends DriftQueryArgs<T>>(
-    args: Args,
-  ) => Promise<QueryResponse<T, Args> | null>;
-}
-
-/**
- * Drift Result Type representing methods for each table definition.
- * @template T - A record of table definitions.
- */
-export type DriftResult<T extends Record<string, DriftTableDefinition>> = {
-  [K in keyof T]: DriftEntityMethods<T[K]>;
-};
-
-/**
- * Type representing an object with a version stamp.
- * @template T - The base type.
- */
-export type WithVersionstamp<T> = T & {
-  versionstamp: string;
-};
-
-export type WithTimestamps<T> = T & {
-  updatedAt?: string;
-  createdAt: string;
-} & WithVersionstamp<T>;
-
-/**
- * Type representing an object that may have a version stamp.
- * @template T - The base type.
- */
-export type WithMaybeVersionstamp<T> = T & {
-  versionstamp?: string | null | undefined;
-};
-
+export type Entity<T extends DriftEntity<any, any, any>> = SchemaObjectOutput<T['schema']> & { versionstamp?: string };
+export type EntityInput<T extends DriftEntity<any, any, any>> = SchemaObjectInput<T['schema']>;
+export type DriftAccessKeyType = "primary" | "index" | "unique";
 export type DriftLocalKey = DriftAccessKey;
 export type DriftForeignKey = DriftAccessKey;
+export type DriftKeyProperty = z.infer<ReturnType<typeof KeyManager.getKeyPropertySchema>>;
+export type DriftQueryAction = keyof DriftEntityMethods<any>;
+export type QueryResponse<T extends DriftEntity<any, any, any>> = Entity<T>;
+export type DriftDeleteResponse = void;
 
-/**
- * Relation Definition Type for defining relationships between tables.
- */
-export type RelationDefinition = [
-  relationSchemaName: string,
-  relationSchema: [ReturnType<typeof z.object>] | ReturnType<typeof z.object>,
-  localKey: DriftLocalKey,
-  foreignKey: DriftForeignKey,
-];
-
-/**
- * Table Definition Type for defining the schema and relations of a table.
- */
-export type DriftTableDefinition<
-  T extends z.AnyZodObject = z.AnyZodObject,
-> = {
-  schema: T;
-  relations?: Record<string, RelationDefinition>;
-  options?: {
-    timestamps?: boolean;
-  };
-};
-
-/**
- * Query Response Type representing the response structure for queries.
- * @template T - The type of table definition.
- * @template PassedInArgs - The arguments passed to the query.
- */
-export type QueryResponse<
-  T extends DriftTableDefinition,
-  PassedInArgs extends DriftQueryArgs<T>,
-> = WithVersionstamp<
-  Select<T, PassedInArgs["select"]> &
-    Include<T["relations"], PassedInArgs["include"]>
->;
-
-/**
- * Select Type for selecting specific fields from a table.
- * @template T - The type of table definition.
- * @template Selected - The selected fields.
- */
-type Select<
-  T extends DriftTableDefinition,
-  Selected extends DriftQueryArgs<T>["select"] | undefined,
-> =
-  Selected extends Partial<Record<string, unknown>>
-    ? Pick<z.output<T["schema"]>, keyof Selected & string>
-    : z.output<T["schema"]>;
-
-type Nothing = {};
-
-/**
- * Include Type for including related data in queries.
- * @template Relations - The relations defined in the table.
- * @template ToBeIncluded - The details of what to include.
- */
-type Include<
-  Relations extends DriftTableDefinition["relations"],
-  ToBeIncluded extends DriftIncludeDetails<Relations> | undefined,
-> =
-  Relations extends Record<string, RelationDefinition>
-    ? ToBeIncluded extends Record<string, unknown>
-      ? {
-          [Rel in keyof Relations]: Relations[Rel][1] extends [
-            { _output: infer OneToManyRelatedSchema },
-          ]
-            ? ToBeIncluded extends Record<
-                Rel,
-                infer DetailsToInclude extends Record<string, unknown>
-              >
-              ? DriftMatchAndSelect<OneToManyRelatedSchema, DetailsToInclude>[]
-              : ToBeIncluded extends Record<Rel, true>
-                ? OneToManyRelatedSchema[]
-                : Nothing
-            : Relations[Rel][1] extends { _output: infer OneToOneRelatedSchema }
-              ? ToBeIncluded extends Record<
-                  Rel,
-                  infer DetailsToInclude extends Record<string, unknown>
-                >
-                ? ToBeIncluded extends Record<Rel, true>
-                  ? DriftMatchAndSelect<OneToOneRelatedSchema, DetailsToInclude>
-                  : Nothing
-                : OneToOneRelatedSchema
-              : Nothing;
-        }
-      : Nothing
-    : Nothing;
-
-/**
- * MatchAndSelect Type for matching and selecting fields from related schemas.
- * @template SourceSchema - The source schema to match against.
- * @template ToBeIncluded - The fields to include.
- */
-type DriftMatchAndSelect<SourceSchema, ToBeIncluded> = {
-  [Key in Extract<
-    keyof SourceSchema,
-    keyof ToBeIncluded
-  >]: ToBeIncluded[Key] extends infer ToInclude
-    ? SourceSchema[Key] extends infer Source
-      ? ToInclude extends true
-        ? Source
-        : DriftMatchAndSelect<Source, ToInclude>
-      : never
-    : never;
-};
-
-/**
- * Delete Response Type representing the response structure for delete operations.
- */
-export type DriftDeleteResponse = { status: "DELETED" };
-
-/**
- * Create and Update Response Type representing the response structure for create and update operations.
- * @template T - The type of table definition.
- */
-export type DriftCreateAndUpdateResponse<T extends DriftTableDefinition> =
-  WithVersionstamp<z.output<T["schema"]>>;
-
-/**
- * Create Args Type representing the arguments for creating a new record.
- * @template T - The type of table definition.
- */
-export type DriftCreateArgs<T extends DriftTableDefinition> = Pick<
-  DriftQueryArgs<T>,
-  "select"
-> & {
-  /** The data to be created. */
-  data: z.input<T["schema"]>;
-};
-
-/**
- * Create Many Args Type representing the arguments for creating multiple new records.
- * @template T - The type of table definition.
- */
-export type DriftCreateManyArgs<T extends DriftTableDefinition> = Pick<
-  DriftQueryArgs<T>,
-  "select"
-> & {
-  /** The data to be created. */
-  data: z.input<T["schema"]>[];
-};
-
-/**
- * Update Args Type representing the arguments for updating an existing record.
- * @template T - The type of table definition.
- */
-export type DriftUpdateArgs<T extends DriftTableDefinition> =
-  DriftQueryArgs<T> & {
-    /** The data to be updated. */
-    data: Partial<WithMaybeVersionstamp<z.input<T["schema"]>>>;
-  };
-
-/**
- * Query Kv Options Type representing the options for querying with Kv.
- */
-export type DriftQueryKvOptions = Parameters<Kv["get"]>[1];
-
-/**
- * Include Details Type for specifying which related data to include in queries.
- * @template Relations - The relations defined in the table.
- */
-type DriftIncludeDetails<Relations extends DriftTableDefinition["relations"]> =
-  Relations extends Record<string, RelationDefinition>
-    ? {
-        [Rel in keyof Relations]?:
-          | true
-          | (Relations[Rel][1] extends [
-              { _output: infer OneToManyRelatedSchema },
-            ]
-              ? DriftIncludable<OneToManyRelatedSchema>
-              : Relations[Rel][1] extends {
-                    _output: infer OneToOneRelatedSchema;
-                  }
-                ? DriftIncludable<OneToOneRelatedSchema>
-                : never);
-      }
-    : never;
-
-/**
- * Includable Type for specifying which fields of a related schema can be included.
- * @template T - The related schema type.
- */
-type DriftIncludable<T> =
-  T extends Record<string, unknown>
-    ? { [K in keyof T]?: true | DriftIncludable<T[K]> }
-    : never;
-
-/**
- * Query Args Type representing the arguments for querying a table.
- * @template T - The type of table definition.
- */
-export type DriftQueryArgs<T extends DriftTableDefinition> = {
-  /** Conditions for filtering the main data. */
-  where?: Partial<WithMaybeVersionstamp<z.output<T["schema"]>>>;
-
-  /** Number of records to take. */
-  take?: number;
-
-  /** Number of records to skip. */
-  skip?: number;
-
-  /** Fields to select from the data. */
-  select?: Partial<Record<keyof z.output<T["schema"]>, true>>;
-
-  /** Order of the main data. */
-  orderBy?: Partial<Record<keyof z.output<T["schema"]>, 'asc' | 'desc'>>;
-
-  /** Related data to include. */
-  include?: DriftIncludeDetails<T["relations"]>;
-
-  /** Distinct fields to return. */
-  distinct?: Array<keyof z.output<T["schema"]>>;
-
-  /** Options for querying with Kv. */
-  kvOptions?: DriftQueryKvOptions;
-};
-
-/**
- * Access Key Type representing the structure of an access key.
- */
-export type DriftAccessKey = ({ value: KvKey } | { value: KvKey[] }) &
-  (
+export type DriftAccessKey =
+  & (
+    | { value: KvKeyPart }
+    | { value: KvKeyPart[] }
+  )
+  & (
     | { type: "primary" }
     | { type: "index"; suffix: string }
     | { type: "unique"; suffix: string }
   );
 
-/**
- * Drift Key Type representing the structure of a drift key.
- */
-export type DriftKey = {
-  /** The access key associated with the drift key. */
-  accessKey: DriftAccessKey;
+export interface DriftEntityMethods<T extends DriftEntity<any, any, any>> {
+  findFirst: <Args extends DriftQueryArgs<T>>(
+    args: Args,
+  ) => Promise<QueryResponse<T>>;
 
-  /** The Kv key associated with the drift key. */
-  kvKey: KvKey;
-};
+  findMany: <Args extends DriftQueryArgs<T>>(
+    args: Args,
+  ) => Promise<Array<QueryResponse<T>>>;
 
-/**
- * Key Property Type representing the structure of a key property.
- */
-export type DriftKeyProperty = z.infer<typeof KeyPropertySchema>;
+  create: <Args extends DriftCreateArgs<T>>(
+    args: Args,
+  ) => Promise<DriftCreateAndUpdateResponse<T>>;
 
-/**
- * Database Value Type representing the possible values that can be stored in the database.
- * @template T - The type of value.
- */
-export type DriftDatabaseValue<T = unknown> =
-  | undefined
-  | null
-  | boolean
-  | number
-  | string
-  | bigint
-  | Uint8Array
-  | Array<T>
-  | Record<string | number | symbol, T>
-  | Map<unknown, unknown>
-  | Set<T>
-  | Date
-  | RegExp;
+  createMany: <Args extends DriftCreateManyArgs<T>>(
+    args: Args,
+  ) => Promise<DriftCreateAndUpdateResponse<T>[]>;
 
-/**
- * Represents the possible query actions that can be performed on an entity.
- * @example
- * type Action = 'create' | 'findUnique' | 'findMany' | 'update' | 'delete' | 'upsert' | 'count' | 'aggregate'
- */
-export type DriftQueryAction = keyof DriftEntityMethods<any>;
+  update: <Args extends DriftUpdateArgs<T>>(
+    args: Args,
+  ) => Promise<DriftCreateAndUpdateResponse<T>>;
 
-/**
- * Interface for entity hooks that can be executed before and after queries
- * @example
- * const hooks: EntityHooks<User> = {
- *   beforeQuery: async (params, context) => {
- *     console.log('Before query:', params);
- *   },
- *   afterQuery: async (result, context) => {
- *     console.log('After query:', result);
- *   }
- * }
- */
-export interface DriftEntityHooks {
-  beforeQuery?: (
-    params: DriftQueryArgs<DriftTableDefinition>,
-    context: any,
-  ) => Promise<void>;
-  afterQuery?: (result: any, context: any) => Promise<void>;
+  delete: <Args extends DriftQueryArgs<T>>(
+    args: Args,
+  ) => Promise<DriftDeleteResponse>;
+
+  deleteMany: <Args extends DriftQueryArgs<T>>(
+    args: Args,
+  ) => Promise<DriftDeleteResponse>;
+
+  updateMany: <Args extends DriftUpdateArgs<T>>(
+    args: Args,
+  ) => Promise<Array<DriftCreateAndUpdateResponse<T>>>;
+
+  findUnique: <Args extends DriftQueryArgs<T>>(
+    args: Args,
+  ) => Promise<QueryResponse<T> | null>;
 }
 
-/**
- * Configuration options for creating a new entity
- * @example
- * const userEntity = new DriftEntity<User>(drift, {
- *   name: 'User',
- *   description: 'User entity',
- *   schema: userSchema,
- *   options: {
- *     timestamps: true,
- *     indexes: ['email']
- *   },
- *   hooks: {
- *     beforeQuery: async (params, context) => {
- *       // Hook logic
- *     }
- *   }
- * })
- */
-export interface DriftEntityOptions<T extends z.AnyZodObject> {
-  name: string;
-  description?: string;
-  schema: T;
-  hooks?: DriftEntityHooks;
-  relations?: DriftTableDefinition['relations'];
-  options?: {
-    timestamps?: boolean;
+export type DriftResult<T extends Record<string, DriftEntity<any, any, any>>> = {
+  [K in keyof T]: DriftEntityMethods<T[K]>;
+};
+
+export type DriftCreateAndUpdateResponse<T extends DriftEntity<any, any, any>> =
+  Entity<T>;
+
+export type DriftCreateArgs<T extends DriftEntity<any, any, any>> = Pick<
+  DriftQueryArgs<T>,
+  "select"
+> & {
+  data: EntityInput<T>;
+};
+
+export type DriftCreateManyArgs<T extends DriftEntity<any, any, any>> = Pick<
+  DriftQueryArgs<T>,
+  "select"
+> & {
+  data: EntityInput<T>[];
+};
+
+
+export type DriftUpdateArgs<T extends DriftEntity<any, any, any>> =
+  DriftQueryArgs<T> & {
+    data: EntityInput<T>;
   };
+
+export type DriftQueryArgs<T extends DriftEntity<any, any, any>> = {
+  where?: Partial<Entity<T>>;
+  take?: number;
+  skip?: number;
+  select?: Partial<Record<keyof Entity<T>, true>>;
+  orderBy?: Partial<Record<keyof Entity<T>, 'asc' | 'desc'>>;
+};
+
+export type DriftKey = {
+  access: DriftAccessKey;
+  kv: KvKey;
+};
+
+export type DriftEntityHookContext = {
+  entity: string
+  action: DriftQueryAction
+  query: any;
+  result?: any;
+}
+
+export interface DriftEntityHooks<T extends DriftEntity<any, any, any>> {
+  beforeQuery?: (params: DriftQueryArgs<T>, context: DriftEntityHookContext) => Promise<void>;
+  afterQuery?: (result: T, context: DriftEntityHookContext) => Promise<void>;
 }

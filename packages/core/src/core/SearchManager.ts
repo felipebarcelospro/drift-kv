@@ -1,16 +1,13 @@
 import { KvEntry, KvEntryMaybe } from "@deno/kv";
 import { z } from "zod";
-import {
-  DriftDatabaseValue,
-  DriftQueryArgs,
-  DriftTableDefinition,
-} from "../types";
-import { isKeyEntry, removeVersionstamp } from "../utils";
+import { DriftEntity } from "../generators/DriftEntity";
+import { DriftQueryArgs } from "../types";
+import { KeyManager } from "./KeyManager";
 
 /**
  * Manages the search and filtering of entries in the database.
  */
-export class SearchManager {
+export class SearchManager<T extends DriftEntity<any, any, any>> {
   /**
    * Filters entries based on the provided query arguments.
    *
@@ -18,13 +15,13 @@ export class SearchManager {
    * @param where - Optional query conditions to filter the entries.
    * @returns An array of KvEntry objects that match the query conditions.
    */
-  public filterEntries<T extends DriftTableDefinition>(
+  public filterEntries<T extends DriftEntity<any, any, any>>(
     items: KvEntryMaybe<z.output<T["schema"]>>[],
     where?: DriftQueryArgs<T>["where"],
   ): KvEntry<z.output<T["schema"]>>[] {
     const filteredItems = items.filter(
       (item): item is KvEntry<z.output<T["schema"]>> => {
-        if (!isKeyEntry(item)) {
+        if (!KeyManager.isKeyEntry(item)) {
           return false;
         }
 
@@ -32,7 +29,7 @@ export class SearchManager {
           return true;
         }
 
-        return Object.entries(removeVersionstamp(where)).every(([key, value]) =>
+        return Object.entries(KeyManager.removeVersionstamp(where)).every(([key, value]) =>
           this.isMatchingValue(item.value[key], value),
         );
       },
@@ -48,7 +45,7 @@ export class SearchManager {
    * @param b - The second value to compare.
    * @returns A boolean indicating whether the values match.
    */
-  private isMatchingValue(a: DriftDatabaseValue, b: DriftDatabaseValue) {
+  private isMatchingValue(a: unknown, b: unknown) {
     if (a instanceof Date && b instanceof Date) {
       return a.getTime() === b.getTime();
     }

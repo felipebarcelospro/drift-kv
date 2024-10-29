@@ -6,7 +6,6 @@ export default async function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const sections = await FileSystemContentManager.getAllNavigationItems();
-
+  const sections = await FileSystemContentManager.getNavigationItems('docs');
   return <DocsLayout sections={sections}>{children}</DocsLayout>;
 }

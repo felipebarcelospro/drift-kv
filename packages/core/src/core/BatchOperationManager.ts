@@ -1,6 +1,7 @@
 import { AtomicOperation, Kv } from "@deno/kv";
 import { DriftBatchOpError } from "../errors";
-import { WithTimestamps, WithVersionstamp } from "../types";
+import { DriftEntity } from "../generators/DriftEntity";
+import { Entity, EntityInput } from "../types";
 
 const OPERATION_LIMIT = 10;
 
@@ -13,16 +14,24 @@ const OPERATION_LIMIT = 10;
  *
  * @template T - The type of items to be processed in batch operations.
  */
-export class BatchOperationManager<T> {
+export class BatchOperationManager<T extends DriftEntity<any, any, any>> {
   private kv: Kv;
+  private entity: T;
 
   /**
    * Creates an instance of BatchOperationManager.
    *
    * @param kv - The key-value store instance used for batch operations.
    */
-  constructor(kv: Kv) {
+  constructor({
+    kv,
+    entity,
+  }: {
+    kv: Kv;
+    entity: T;
+  }) {
     this.kv = kv;
+    this.entity = entity;
   }
 
   /**
@@ -38,19 +47,20 @@ export class BatchOperationManager<T> {
    * @throws DriftBatchOpError if the batched operation fails.
    */
   public async executeBatch(
-    itemsToBatch: T[],
-    fn: (res: AtomicOperation, item: T) => undefined | unknown,
+    itemsToBatch: EntityInput<T>[],
+    fn: (res: AtomicOperation, item: EntityInput<T>) => undefined | unknown,
     opName?: "create" | "update" | "delete" | "read",
     options?: {
       timestamps?: boolean;
     },
-  ): Promise<(WithVersionstamp<T> | WithVersionstamp<WithTimestamps<T>>)[]> {
-    const itemBatches: T[][] = [];
-    const itemsWithVersionstamps: (WithVersionstamp<T> | WithVersionstamp<WithTimestamps<T>>)[] = [];
+  ): Promise<Entity<T>[]> {
+    const itemBatches: Entity<T>[][] = [];
+    const itemsWithVersionstamps: Entity<T>[] = [];
 
     // Split items into batches
     for (let i = 0; i < itemsToBatch.length; i += OPERATION_LIMIT) {
-      itemBatches.push(itemsToBatch.slice(i, i + OPERATION_LIMIT));
+      const batch = itemsToBatch.slice(i, i + OPERATION_LIMIT).map(item => item as Entity<T>);
+      itemBatches.push(batch);
     }
 
     // Process each batch
@@ -59,8 +69,7 @@ export class BatchOperationManager<T> {
       for (let item of batch) {
         const returnData = fn(res, item);
         if (returnData) {
-          // @ts-expect-error: we cannot know the data type
-          item = returnData;
+          item = returnData as Entity<T>;
         }
       }
       const commitResult = await res.commit();
@@ -72,7 +81,7 @@ export class BatchOperationManager<T> {
       }
 
       // Add versionstamp and timestamps to the batch
-      const timestamp = new Date().toISOString();
+      const timestamp = new Date();
       for (const item of batch) {
         if (options?.timestamps) {
           itemsWithVersionstamps.push({
@@ -80,12 +89,12 @@ export class BatchOperationManager<T> {
             versionstamp: commitResult.versionstamp,
             createdAt: timestamp,
             updatedAt: timestamp,
-          } as WithVersionstamp<WithTimestamps<T>>);
+          });
         } else {
           itemsWithVersionstamps.push({
             ...item,
             versionstamp: commitResult.versionstamp,
-          } as WithVersionstamp<T>);
+          });
         }
       }
     }

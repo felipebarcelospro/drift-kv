@@ -182,7 +182,7 @@ await emailQueue.enqueue({
 });
 ```
 
-These examples showcase the core functionalities of Drift KV. For more detailed information and advanced usage, please refer to our [documentation](https://github.com/felipebarcelospro/drift/docs).
+These examples showcase the core functionalities of Drift KV. For more detailed information and advanced usage, please refer to our [documentation](https://felipebarcelospro.github.io/drift-kv/docs).
 
 ## Features
 
@@ -216,9 +216,9 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 ## Contact
 
-Felipe - [@felipebarcelospro](https://twitter.com/felipebarcelospro) - felipebarcelospro@gmail.com
-
-Project Link: [https://github.com/felipebarcelospro/drift](https://github.com/felipebarcelospro/drift)
+- Follow me on X: [@feldbarcelospro](https://x.com/feldbarcelospro)
+- Join us on GitHub Discussions: [Drift Community](https://github.com/felipebarcelospro/drift-kv/discussions)
+- Project Link: [https://github.com/felipebarcelospro/drift-kv](https://github.com/felipebarcelospro/drift-kv)
 
 ## Acknowledgments
 
@@ -228,7 +228,7 @@ Project Link: [https://github.com/felipebarcelospro/drift](https://github.com/fe
 
 ## Links
 
-- [Documentation](https://github.com/felipebarcelospro/drift/docs)
+- [Documentation](https://felipebarcelospro.github.io/drift-kv/docs)
 - [Report Bugs](https://github.com/felipebarcelospro/drift/issues)
 - [Request Features](https://github.com/felipebarcelospro/drift/issues)
 

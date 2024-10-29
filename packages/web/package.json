@@ -22,7 +22,7 @@
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-scroll-area": "^1.0.5",
     "@radix-ui/react-separator": "^1.1.0",
-    "@react-three/fiber": "^9.0.0-alpha.8",
+    "@react-three/fiber": "9.0.0-alpha.8",
     "@types/hast": "^3.0.4",
     "@types/mdast": "^4.0.3",
     "@types/three": "^0.169.0",

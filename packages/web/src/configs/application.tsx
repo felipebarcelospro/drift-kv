@@ -9,8 +9,8 @@ export const config: Config = {
     'Drift KV: A high-performance, type-safe ORM for {{ words: ["Deno", "Bun", "Node.js"], interval: 2000 }}',
 
   // Links
-  githubUrl: "https://github.com/felipebarcelospro/drift",
-  twitterUrl: "https://twitter.com/DriftORM",
+  githubUrl: "https://github.com/felipebarcelospro/drift-kv",
+  twitterUrl: "https://x.com/feldbarcelospro",
   purchaseUrl: "",
 
   // Developer Info
@@ -114,55 +114,6 @@ export const config: Config = {
           <line x1="3" y1="6" x2="3.01" y2="6"></line>
           <line x1="3" y1="12" x2="3.01" y2="12"></line>
           <line x1="3" y1="18" x2="3.01" y2="18"></line>
-        </svg>
-      ),
-    },
-    {
-      title: "Extensible Plugin System",
-      description:
-        "Enhance your development workflow with Drift KV's modular plugin architecture. Build and share custom plugins that extend functionality while maintaining clean code structure and optimal performance.",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 3a6.364 6.364 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-          <path d="M12 3c-1.105 0-2 1.79-2 4s.895 4 2 4 2-1.79 2-4-.895-4-2-4Z"></path>
-          <path d="M12 3c0-1.105 1.79-2 4-2s4 .895 4 2-1.79 2-4 2-4-.895-4-2Z"></path>
-        </svg>
-      ),
-    },
-    {
-      title: "Advanced Caching",
-      description:
-        "Optimize performance with Drift KV's intelligent multi-layer caching strategies. Configure cache invalidation rules and implement custom policies to meet your specific performance requirements.",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 2v4"></path>
-          <path d="M12 18v4"></path>
-          <path d="m4.93 4.93 2.83 2.83"></path>
-          <path d="m16.24 16.24 2.83 2.83"></path>
-          <path d="M2 12h4"></path>
-          <path d="M18 12h4"></path>
-          <path d="m4.93 19.07 2.83-2.83"></path>
-          <path d="m16.24 7.76 2.83-2.83"></path>
         </svg>
       ),
     },

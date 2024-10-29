@@ -1,6 +1,6 @@
 {
   "name": "@drift-kv/core",
-  "version": "0.1.0",
+  "version": "0.1.13",
   "description": "A powerful ORM for Deno KV and Node.js",
   "keywords": [
     "orm",
@@ -12,9 +12,9 @@
     "key-value"
   ],
   "license": "MIT",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -23,7 +23,7 @@
     }
   },
   "files": [
-    "dist/**"
+    "./dist/**"
   ],
   "sideEffects": false,
   "scripts": {
@@ -37,10 +37,11 @@
   },
   "dependencies": {
     "@deno/kv": "^0.8.3",
+    "uuid": "^11.0.2",
     "zod": "^3.22.4"
   },
   "peerDependencies": {
-    "zod": "^3.22.4"    
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
+
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { config } from "@/configs/application";
 import { ContentMetadata, ContentSection, ContentType } from "@/lib/docs";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
-import { Clock, Rss, Triangle, Waves } from "lucide-react";
-import Link from "next/link";
+import { Clock, Rss, Triangle } from "lucide-react";
 import { MouseEvent as ReactMouseEvent, useState } from "react";
 import { CanvasRevealEffect } from "./canvas-reveal-effect";
 
@@ -84,8 +85,6 @@ function BlogPostCard({ post }: BlogPostCardProps) {
         return <Triangle className="h-8 w-8 text-foreground" />;
       case "docs":
         return <Clock className="h-8 w-8 text-foreground" />;
-      case "changelog":
-        return <Waves className="h-8 w-8 text-foreground" />;
     }
   };
 

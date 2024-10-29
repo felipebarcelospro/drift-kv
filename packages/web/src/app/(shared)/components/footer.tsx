@@ -4,7 +4,7 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer className="border-t border-border relative">
-      <div className="container mx-auto py-8 max-w-5xl">
+      <div className="container mx-auto py-8 max-w-screen-md">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <div className="flex items-center space-x-4">
             <span className="text-sm text-muted-foreground">

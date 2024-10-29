@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
-import { Drift } from "../index";
+import { Drift, DriftEntity } from "../index";
 import { InMemoryDenoKv } from './kv-mock';
 
 describe('DriftWatcher', () => {
   let client = new InMemoryDenoKv();
+  const user = new DriftEntity({
+    name: 'user',
+    schema: (z) => ({
+      name: z.string(),
+    }),
+  });
+
   let drift = new Drift({
     client,
     schemas: {
       entities: {
-        user: {
-          name: 'user',
-          schema: z.object({
-            id: z.string().uuid().describe('primary'),
-            name: z.string(),
-          }),
-        },
+        user,
       },
       queues: {},
     },
@@ -33,7 +33,6 @@ describe('DriftWatcher', () => {
     const callback = vi.fn();
 
     const userData = {
-      id: crypto.randomUUID(),
       name: 'John',
     };
 

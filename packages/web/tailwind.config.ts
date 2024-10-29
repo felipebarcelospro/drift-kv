@@ -95,7 +95,7 @@ const config = {
     hljs: {
       custom: {
         base: {
-          background: "hsl(var(--background))",
+          background: "transparent",
           color: "hsl(var(--foreground))",
         },
         general: {

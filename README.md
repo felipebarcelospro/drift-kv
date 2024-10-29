@@ -15,6 +15,7 @@ Drift KV is a powerful ORM designed for Deno KV with built-in support for:
 - Job queues
 - Plugin system
 - Type-safe queries
+- Compatibility with Deno KV, Node.js, Bun.js and Edge environments
 
 The goal of Drift is to offer a seamless and powerful developer experience, allowing you to focus on what truly matters - building great applications. Drift KV takes care of the complex plumbing required for database interactions and real-time features, saving you significant development time.
 
@@ -37,21 +38,15 @@ To get a local copy up and running follow these simple steps:
 
 ### Installation
 
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/felipebarcelospro/drift.git
-   ```
-2. Install dependencies:
-   ```sh
-   deno task install
-   ```
-3. Initialize Drift KV with your Deno KV client:
+1. Install the dependencies:
+    ```sh
+    npm install @drift/core
+    ```
+
+3. Initialize your Deno KV client:
    ```typescript
    import { Drift } from "@drift-kv/core";
-   
-   const client = Deno.openKv();
-
-   const drift = new Drift({ client });
+   const client = await Deno.openKv();
    ```
 
 ## Usage
@@ -61,12 +56,15 @@ Drift KV is designed to be intuitive for both beginners and experienced develope
 ### Defining an Entity
 
 ```typescript
-import { DriftEntity } from "drift-kv";
-import { z } from "zod";
+import { DriftEntity } from "@drift-kv/core";
 
 const User = new DriftEntity({
   name: "user",
-  schema: z.object({
+  description: "User entity",
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
     id: z.string().uuid(),
     name: z.string().min(3).max(100),
     email: z.string().email(),
@@ -74,6 +72,15 @@ const User = new DriftEntity({
     createdAt: z.date(),
     updatedAt: z.date(),
   }),
+});
+
+const drift = new Drift({ 
+  client,
+  schemas: {
+    entities: {
+      user: User,
+    }
+  }
 });
 ```
 
@@ -83,12 +90,9 @@ const User = new DriftEntity({
 // Create a new user
 const newUser = await drift.entities.user.create({
   data: {
-    id: "123e4567-e89b-12d3-a456-426614174000",
     name: "Felipe",
     email: "felipe@example.com",
-    age: 30,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    age: 30
   },
 });
 
@@ -112,15 +116,9 @@ await drift.entities.user.delete({
 ### Querying Data
 
 ```typescript
-// Find all users older than 25
+// Order users by age in descending order
 const adultUsers = await drift.entities.user.findMany({
-  where: { age: { gt: 25 } },
   orderBy: { age: "desc" },
-});
-
-// Count users
-const userCount = await drift.entities.user.count({
-  where: { age: { gte: 18 } },
 });
 ```
 
@@ -128,47 +126,29 @@ const userCount = await drift.entities.user.count({
 
 ```typescript
 // Watch for changes on the User entity
-const unsubscribe = drift.entities.user.watchAll(
-  { where: { age: { gte: 18 } } },
-  (users) => {
+const { cancel } = drift.entities.user.watch({
+  where: { age: { gte: 18 } },
+  callback: (users) => {
     console.log("Adult users changed:", users);
   },
-);
+});
 
 // Later, unsubscribe from the changes
-unsubscribe();
-```
-
-### Using Plugins
-
-```typescript
-import { LoggingPlugin } from "drift-kv/plugins";
-
-// Create a logging plugin
-const loggingPlugin = new LoggingPlugin({
-  logQueries: true,
-  logMutations: true,
-});
-
-// Initialize Drift with the plugin
-const drift = new Drift({
-  client,
-  plugins: [loggingPlugin],
-});
+await cancel();
 ```
 
 ### Working with Queues
 
 ```typescript
-import { DriftQueue } from "drift-kv";
+import { DriftQueue } from "@drift-kv/core";
 
 // Define a queue for processing emails
 const emailQueue = new DriftQueue({
   name: "email",
-  schema: z.object({
+  schema: (z) => ({
     to: z.string().email(),
-    subject: z.string(),
-    body: z.string(),
+    subject: z.string().min(3).max(100),
+    body: z.string().min(10),
   }),
   handler: async (job) => {
     // Process the email job
@@ -176,15 +156,30 @@ const emailQueue = new DriftQueue({
   },
 });
 
+const drift = new Drift({ 
+  client,
+  schemas: {
+    entities: {},
+    queues: {
+      emailQueue: emailQueue,
+    }
+  }
+});
+
 // Add a job to the queue
-await emailQueue.enqueue({
-  to: "user@example.com",
-  subject: "Welcome to Drift KV",
-  body: "Thank you for using Drift KV!",
+await drift.queues.emailQueue.schedule({
+  data: {
+    to: "user@example.com",
+    subject: "Welcome to Drift KV",
+    body: "Thank you for using Drift KV!",
+  },
+  options: {
+    delay: 1000
+  }
 });
 ```
 
-These examples showcase the core functionalities of Drift KV. For more detailed information and advanced usage, please refer to our [documentation](https://github.com/felipebarcelospro/drift/docs).
+These examples showcase the core functionalities of Drift KV. For more detailed information and advanced usage, please refer to our [documentation](https://felipebarcelospro.github.io/drift-kv/docs).
 
 ## Features
 
@@ -218,9 +213,9 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 ## Contact
 
-Felipe - [@felipebarcelospro](https://twitter.com/felipebarcelospro) - felipebarcelospro@gmail.com
-
-Project Link: [https://github.com/felipebarcelospro/drift](https://github.com/felipebarcelospro/drift)
+- Follow me on X: [@feldbarcelospro](https://x.com/feldbarcelospro)
+- Join us on GitHub Discussions: [Drift Community](https://github.com/felipebarcelospro/drift-kv/discussions)
+- Project Link: [https://github.com/felipebarcelospro/drift-kv](https://github.com/felipebarcelospro/drift-kv)
 
 ## Acknowledgments
 
@@ -230,7 +225,7 @@ Project Link: [https://github.com/felipebarcelospro/drift](https://github.com/fe
 
 ## Links
 
-- [Documentation](https://github.com/felipebarcelospro/drift/docs)
+- [Documentation](https://felipebarcelospro.github.io/drift-kv/docs)
 - [Report Bugs](https://github.com/felipebarcelospro/drift/issues)
 - [Request Features](https://github.com/felipebarcelospro/drift/issues)
 

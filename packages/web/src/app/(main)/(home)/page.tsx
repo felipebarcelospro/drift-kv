@@ -11,7 +11,7 @@ import { HeroSection } from "./components/hero-section";
 export default function Home() {
   return (
     <motion.main
-      className="container mx-auto px-4 py-8 sm:py-12 md:py-16"
+      className="container py-8 sm:py-12 md:py-16"
       initial="hidden"
       animate="visible"
       variants={{
@@ -28,7 +28,7 @@ export default function Home() {
       <FeaturesSection />
 
       <motion.div
-        className="container mx-auto max-w-5xl"
+        className="container md:max-w-screen-md"
         variants={{
           hidden: { opacity: 0, y: 20 },
           visible: { opacity: 1, y: 0 },
@@ -44,7 +44,7 @@ export default function Home() {
           visible: { opacity: 1, y: 0 },
         }}
       >
-        <div className="container mx-auto px-4 max-w-5xl">
+        <div className="container md:max-w-screen-md">
           <motion.div
             className="grid gap-8 sm:gap-12"
             variants={{
@@ -71,7 +71,7 @@ export default function Home() {
           visible: { opacity: 1, y: 0 },
         }}
       >
-        <div className="container mx-auto max-w-5xl px-4">
+        <div className="container md:max-w-screen-md">
           <CTASection />
         </div>
       </motion.section>
