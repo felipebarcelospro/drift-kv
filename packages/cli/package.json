@@ -1,0 +1,27 @@
+{
+  "name": "@drift-kv/cli",
+  "version": "1.0.0",
+  "description": "CLI for Drift KV",
+  "main": "index.js",
+  "bin": {
+    "drift-kv": "./dist/bin/drift-kv.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bin/drift-kv.js",
+    "dev": "ts-node src/bin/drift-kv.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "commander": "^10.0.0",
+    "inquirer": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "jq": "^1.0.0" 
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
