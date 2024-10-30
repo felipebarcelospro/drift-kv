@@ -70,7 +70,7 @@ export function Search({ className, sections }: SearchProps) {
             >
               {section.items.map((item) => (
                 <CommandItem
-                  key={item.slug}
+                  key={`${item.type}-=-${item.slug}`}
                   onSelect={() => navigateToContent(item)}
                 >
                   {item.title}

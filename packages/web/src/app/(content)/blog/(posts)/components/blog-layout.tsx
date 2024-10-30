@@ -20,7 +20,7 @@ export function BlogLayout({ children }: BlogLayoutProps) {
       <div className="grid grid-cols-[3fr_1fr] gap-16">
         <section className="space-y-4 w-auto overflow-hidden border border-border rounded-lg p-16 bg-gradient-to-br from-background to-muted/20">
           <BackButton />
-          <div className="max-w-full">{children}</div>
+          <div className="max-w-full markdown-content">{children}</div>
           <CTASection />
         </section>
         <aside className="sticky top-24 h-[calc(100vh-6rem)] overflow-y-auto">

@@ -124,14 +124,14 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         return (
           <li
             className={cn(
-              "p-4 bg-secondary border border-border rounded-lg shadow-sm transition-shadow duration-200",
+              "p-4 border border-border rounded-lg transition-shadow duration-200 shadow-[inset_10px_-50px_94px_0_rgb(199,199,199,0.05)] backdrop-blur",
               isLink ? "p-0" : "hover:shadow-md",
             )}
             {...props}
           >
             <div className="flex flex-col gap-1">
               <div className="font-semibold">{strongElement}</div>
-              <div className="text-card-foreground">{textContent}</div>
+              <div className="text-card-foreground opacity-60">{textContent}</div>
             </div>
           </li>
         );
@@ -151,7 +151,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       return (
         <li
           className={cn(
-            "p-4 bg-secondary border border-border rounded-lg shadow-sm transition-shadow duration-200",
+            "p-4 border border-border rounded-lg transition-shadow duration-200 shadow-[inset_10px_-50px_94px_0_rgb(199,199,199,0.05)] backdrop-blur",
             "list-none",
             isLink ? "p-0" : "hover:shadow-md",
           )}
@@ -209,8 +209,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       );
     },
     pre: ({ children, ...props }: PreProps) => (
-      <div className="relative border border-border rounded-md overflow-hidden shadow-md bg-background">
-        <div className="flex items-center justify-between px-4 py-2 bg-secondary border-b border-border">
+      <div className="relative border border-border rounded-md overflow-hidden shadow-md bg-background mb-6">
+        <div className="flex items-center justify-between px-4 py-4 bg-secondary/20 border-b border-border">
           <div className="flex space-x-2">
             <div className="w-3 h-3 rounded-full bg-red-500 hover:opacity-80 transition-opacity" />
             <div className="w-3 h-3 rounded-full bg-yellow-500 hover:opacity-80 transition-opacity" />
@@ -220,25 +220,21 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         <pre {...props} className="p-4 overflow-x-auto bg-[#111]">
           {React.Children.map(children, (child, index) =>
             React.isValidElement(child)
-              ? React.cloneElement(child, { key: `code-${index}` })
+              // @ts-ignore
+              ? React.cloneElement(child, { key: `code-${index}`, className: cn(child.props.className, "hljs"), style: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' } })
               : child,
           )}
         </pre>
       </div>
     ),
-    code: ({ children, ...props }: CodeProps) => (
-      <code
-        suppressHydrationWarning
-        className="hljs"
-        style={{
-          fontFamily:
-            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-        }}
-        {...props}
-      >
-        {children}
-      </code>
-    ),
+    code: ({ children, ...props }: CodeProps) => {
+      const className = props.className as string;
+      if(className?.includes('hljs')) {
+        return children;
+      }
+
+      return <code className="inline-flex bg-secondary px-1 rounded-md" {...props}>{children}</code>;
+    },
     table: ({ ...props }) => (
       <div className="my-6 w-full overflow-y-auto rounded-md border border-border bg-secondar/50">
         <table className="w-full border-collapse border-border" {...props} />

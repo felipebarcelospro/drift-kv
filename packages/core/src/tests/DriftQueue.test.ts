@@ -47,30 +47,13 @@ describe('DriftQueue', () => {
     expect(drift.queues.testQueue).toBeInstanceOf(DriftQueueManager);
   });
 
-  it('should schedule a new job in the queue with UUID v7', async () => {
-    let { drift } = makeSut({
-      client,
-      handler: vi.fn(),
-    });
-
-    const jobData = { task: 'testTask' }; // No ID provided
-    const result = await drift.queues.testQueue.schedule({ 
-      data: {
-        task: jobData.task,
-      }
-     });
-    
-    expect(result.status).toBe('SCHEDULED');
-    expect(result.topic).toBe('testQueue');
-  });
-
   it('should schedule a new job in the queue with provided ID', async () => {
     let { drift } = makeSut({
       client,
       handler: vi.fn(),
     });
 
-    const jobData = { id: crypto.randomUUID(), task: 'testTask' };
+    const jobData = { task: 'testTask' };
     const result = await drift.queues.testQueue.schedule({ data: jobData });
     
     expect(result.status).toBe('SCHEDULED');

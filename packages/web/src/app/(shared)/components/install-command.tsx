@@ -17,20 +17,6 @@ import { useMemo, useState } from "react";
 
 export const INSTALL_COMMANDS = [
   {
-    id: "deno",
-    name: "Deno",
-    icon: DenoIcon,
-    code: 'deno add jsr:@drift-kv/core',
-    language: "typescript",
-  },
-  {
-    id: "bun",
-    name: "Bun",
-    icon: BunIcon,
-    code: "bun add @drift-kv/core",
-    language: "bash",
-  },
-  {
     id: "npm",
     name: "NPM",
     icon: NPMIcon,
@@ -51,6 +37,20 @@ export const INSTALL_COMMANDS = [
     code: "yarn add @drift-kv/core",
     language: "bash",
   },
+  {
+    id: "bun",
+    name: "Bun",
+    icon: BunIcon,
+    code: "bun add @drift-kv/core",
+    language: "bash",
+  },
+  {
+    id: "deno",
+    name: "Deno",
+    icon: DenoIcon,
+    code: 'deno add jsr:@drift-kv/core',
+    language: "typescript",
+  },
 ] as const;
 
 const BUTTON_VARIANTS = {
@@ -66,7 +66,7 @@ const CODE_BLOCK_VARIANTS = {
 
 export function InstallCommand() {
   const [selectedTech, setSelectedTech] =
-    useState<(typeof INSTALL_COMMANDS)[number]["id"]>("deno");
+    useState<(typeof INSTALL_COMMANDS)[number]["id"]>("npm");
 
   const technologies = useMemo(() => {
     const tech = INSTALL_COMMANDS.find((t) => t.id === selectedTech);

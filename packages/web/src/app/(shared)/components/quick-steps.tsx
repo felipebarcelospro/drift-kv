@@ -8,7 +8,7 @@ import {
   ConnectedCodeBlockContent,
 } from "@/components/ui/code-block";
 import { motion } from "framer-motion";
-import { CodeIcon, ListIcon, PenToolIcon, ZapIcon } from "lucide-react";
+import { CodeIcon, ListIcon, TerminalIcon, ZapIcon } from "lucide-react";
 import { ReactNode, useMemo, useState } from "react";
 import { INSTALL_COMMANDS } from "./install-command";
 
@@ -21,25 +21,31 @@ type TechnologyOption = {
 };
 
 const basicUsageCode = `
-import { Drift } from "drift-kv";
+import { Drift, DriftEntity } from "drift-kv";
 import { z } from "zod";
 
 // Initialize the database client
-const client = Deno.openKv();
+const client = await Deno.openKv('./db.sqlite');
+
+// Define the User entity schema
+const user = new DriftEntity({
+  name: "user",
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
+    name: z.string().min(3).max(100),
+    email: z.string().email(),
+  }),
+});
 
 // Set up Drift KV instance
 const drift = new Drift({
   client,
   schemas: {
+    queues: {},
     entities: {
-      user: {
-        name: "user",
-        schema: z.object({
-          id: z.string().uuid(),
-          name: z.string().min(3).max(100),
-          email: z.string().email(),
-        }),
-      },
+      user: user,
     },
   },
 });
@@ -47,28 +53,52 @@ const drift = new Drift({
 // Create a new user
 await drift.entities.user.create({
   data: {
-    id: "123e4567-e89b-12d3-a456-426614174000",
     name: "Felipe",
     email: "felipe@example.com",
   },
 });
 
-// Query users
-const users = await drift.entities.user.findMany({
-  where: { name: { contains: "Felipe" } },
+// Find all users
+const users = await drift.entities.user.findMany();
+
+// Update a user
+await drift.entities.user.update({
+  where: { email: "felipe@example.com" },
+  data: {
+    name: "Felipe Updated",
+  },
 });
 
-console.log(users);
+// Delete a user
+await drift.entities.user.delete({
+  where: { email: "felipe@example.com" },
+});
 `;
 
 const queuesUsageCode = `
-import { DriftQueue } from "drift-kv";
-import { z } from "zod";
+import { Drift, DriftQueue } from "drift-kv";
+import { Resend } from "resend";
+
+// Open the database (sqlite)
+const kv = await Deno.openKv('./db.sqlite');
+
+// Initialize the Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Send an email with Resend (https://resend.com)
+const sendMail = async (data: { to: string; subject: string; body: string }) => {
+  await resend.emails.send({
+    from: "onboarding@resend.dev",
+    to: data.to,
+    subject: data.subject,
+    text: data.body,
+  });
+};
 
 // Define a queue for processing emails
 const emailQueue = new DriftQueue({
   name: "email",
-  schema: z.object({
+  schema: (z) => ({
     to: z.string().email(),
     subject: z.string(),
     body: z.string(),
@@ -86,34 +116,91 @@ await emailQueue.enqueue({
   body: "Thank you for using Drift KV!",
 });
 
-// Process the queue
-await emailQueue.process({
-  concurrency: 10,
+// Initialize the Drift client
+const drift = new Drift({
+  client: kv,
+  schemas: {
+    entities: {},
+    queues: {
+      emailQueue: emailQueue,
+    },
+  },
 });
+
+// Process the queue
+drift.process({
+  topics: ['emailQueue'],
+  hooks: {
+    onWorkerStart: async () => {
+      console.log('Worker started');
+    },
+    onWorkerEnd: async () => {
+      console.log('Worker ended');
+    },
+    onJobStart: async (job) => {
+      console.log('Job started', job);
+    },
+    onJobEnd: async (job) => {
+      console.log('Job ended', job);
+    },
+  },
+  options: {
+    timeout: 30000,
+  }
+})
 `;
 
 const realTimeUsageCode = `
 import { Drift } from "drift-kv";
 
 // Watch for changes on the User entity
-const unsubscribe = drift.entities.user.watchAll(
-  { where: { age: { gte: 18 } } },
-  (users) => {
-    console.log("Adult users changed:", users);
+const unsubscribe = drift.entities.user.watch({
+  where: { id: 'user-123' },
+  callback: (data) => {
+    console.log('User updated:', data);
   }
-);
+});
 
 // Later, unsubscribe from the changes
 unsubscribe();
 `;
 
-const migrateUsageCode = `
-import { Drift } from "drift-kv";
+const cliUsageCode = `
+# Initialize a new Drift KV project with TypeScript setup
+$ drift-kv init my-drift-project
+✓ Created project structure
+  └─ src/
+     ├─ entities/
+     ├─ queues/
+     └─ index.ts
+✓ Generated tsconfig.json
+✓ Created initial configuration
 
-// Migrate database schema
-await drift.migrate({
-  path: "./migrations",
-});
+# Create an entity with interactive prompts
+$ drift-kv create entity
+? Entity name: User
+? Add timestamps? Yes
+? Add schema fields:
+  ✓ name (string)
+  ✓ email (string, unique)
+  ✓ age (number)
+✓ Created src/entities/user.ts
+✓ Updated src/entities/index.ts
+
+# Create a job queue with handler
+$ drift-kv create queue
+? Queue name: EmailQueue
+? Add schema fields:
+  ✓ to (string)
+  ✓ subject (string) 
+  ✓ body (string)
+✓ Created src/queues/email-queue.ts
+✓ Generated handler template
+✓ Updated src/queues/index.ts
+
+# Project is ready with TypeScript support
+# All files are properly typed and indexed
+# Just import and start using in your app!
 `;
 
 export function QuickSteps() {
@@ -162,10 +249,10 @@ export function QuickSteps() {
         language: "typescript",
       },
       {
-        id: "utils",
-        label: "Utilities",
-        icon: <PenToolIcon className="w-4 h-4 mr-2" />,
-        code: migrateUsageCode,
+        id: "cli",
+        label: "Drift KV CLI",
+        icon: <TerminalIcon className="w-4 h-4 mr-2" />,
+        code: cliUsageCode,
         language: "typescript",
       },
     ],
@@ -202,7 +289,7 @@ export function QuickSteps() {
         Get Started with Drift
       </motion.h2>
 
-      <Card className="p-6 sm:p-8 bg-gradient-to-b from-background to-secondary/5">
+      <Card className="p-6 sm:p-8 bg-gradient-to-b from-background to-secondary/5 shadow-[inset_10px_-50px_94px_0_rgb(199,199,199,0.05)] backdrop-blur">
         <motion.div
           className="flex flex-wrap gap-2 mb-8"
           initial={{ opacity: 0 }}

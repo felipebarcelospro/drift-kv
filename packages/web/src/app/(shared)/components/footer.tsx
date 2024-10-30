@@ -4,17 +4,25 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer className="border-t border-border relative">
-      <div className="container mx-auto py-8 max-w-screen-md">
+      <div className="container mx-auto py-8 md:max-w-screen-lg">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <div className="flex items-center space-x-4">
             <span className="text-sm text-muted-foreground">
-              Made with ❤️ by{" "}
+              Built by{" "}
               <a
                 href={config.githubUrl}
                 className="text-primary hover:underline"
               >
                 {config.developerName}
               </a>
+              . The source code is available on{" "}
+              <a
+                href={config.githubUrl}
+                className="text-primary hover:underline"
+              >
+                GitHub
+              </a>
+              .
             </span>
             <div className="flex space-x-2">
               <a
@@ -23,17 +31,17 @@ export function Footer() {
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
+                  width="14"
+                  height="14"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="lucide lucide-twitter"
                 >
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+                  <path d="M4 4l11.733 16h4.267l-11.733 -16z"></path>
+                  <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path>
                 </svg>
               </a>
               <a
@@ -42,8 +50,8 @@ export function Footer() {
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
+                  width="14"
+                  height="14"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"

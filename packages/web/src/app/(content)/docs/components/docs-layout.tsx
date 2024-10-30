@@ -24,7 +24,7 @@ export function DocsLayout({ children, sections }: DocsLayoutProps) {
     >
       <div className="grid grid-cols-12 gap-8">
         <motion.div
-          className="col-span-3"
+          className="col-span-3 relative"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
@@ -40,7 +40,7 @@ export function DocsLayout({ children, sections }: DocsLayoutProps) {
           transition={{ delay: 0.3 }}
         >
           <Search sections={sections} className="mb-8" />
-          {children}
+          <div className="markdown-content">{children}</div>
           <CTASection />
         </motion.main>
 

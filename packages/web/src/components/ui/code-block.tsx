@@ -93,7 +93,7 @@ const CodeBlockHeader = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "flex items-center justify-between px-4 py-2 bg-secondary border-b border-border",
+        "flex items-center justify-between px-4 py-2 bg-secondary/20 border-b border-border",
         className,
       )}
       {...props}
