@@ -73,7 +73,7 @@ export function HeroSection() {
       </motion.p>
 
       <motion.div
-        className="container mx-auto max-w-screen-md"
+        className="container mx-auto md:max-w-screen-lg"
         variants={{
           hidden: { opacity: 0, y: 20 },
           visible: { opacity: 1, y: 0 },

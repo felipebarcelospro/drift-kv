@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Check, Copy } from "lucide-react";
-import { useTheme } from "next-themes";
 import * as React from "react";
 import { CodeBlock as CodeBlockComponent } from "react-code-blocks";
 
@@ -100,9 +99,9 @@ const CodeBlockHeader = React.forwardRef<
       {...props}
     >
       <div className="flex space-x-2">
-        <div className="w-3 h-3 rounded-full bg-destructive hover:opacity-80 transition-opacity" />
-        <div className="w-3 h-3 rounded-full bg-[hsl(43_74%_66%)] dark:bg-[hsl(30_80%_55%)] hover:opacity-80 transition-opacity" />
-        <div className="w-3 h-3 rounded-full bg-[hsl(142_76%_36%)] dark:bg-[hsl(142_76%_46%)] hover:opacity-80 transition-opacity" />
+        <div className="w-3 h-3 rounded-full bg-red-500 hover:opacity-80 transition-opacity" />
+        <div className="w-3 h-3 rounded-full bg-yellow-500 hover:opacity-80 transition-opacity" />
+        <div className="w-3 h-3 rounded-full bg-green-500 hover:opacity-80 transition-opacity" />
       </div>
       <div className="flex items-center gap-2">
         <div className="relative z-10">
@@ -196,8 +195,6 @@ const CodeBlockContent = React.forwardRef<
     },
     ref,
   ) => {
-    const { theme } = useTheme();
-
     const codeTheme = {
       backgroundColor: "#111",
       textColor: "#abb2bf",

@@ -92,6 +92,14 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       </ol>
     ),
     li: ({ children, ...props }: ListItemProps) => {
+      if (props.className?.includes("task-list-item")) {
+        return (
+          <li className="flex items-center gap-2" {...props}>
+            {children}
+          </li>
+        );
+      }
+
       // Check if the child is a link
       const isLink = React.Children.toArray(children).some(
         (child) =>
@@ -204,12 +212,12 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       <div className="relative border border-border rounded-md overflow-hidden shadow-md bg-background">
         <div className="flex items-center justify-between px-4 py-2 bg-secondary border-b border-border">
           <div className="flex space-x-2">
-            <div className="w-3 h-3 rounded-full bg-destructive hover:opacity-80 transition-opacity" />
-            <div className="w-3 h-3 rounded-full bg-[hsl(43_74%_66%)] dark:bg-[hsl(30_80%_55%)] hover:opacity-80 transition-opacity" />
-            <div className="w-3 h-3 rounded-full bg-[hsl(142_76%_36%)] dark:bg-[hsl(142_76%_46%)] hover:opacity-80 transition-opacity" />
+            <div className="w-3 h-3 rounded-full bg-red-500 hover:opacity-80 transition-opacity" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500 hover:opacity-80 transition-opacity" />
+            <div className="w-3 h-3 rounded-full bg-green-500 hover:opacity-80 transition-opacity" />
           </div>
         </div>
-        <pre {...props} className="p-4 overflow-x-auto">
+        <pre {...props} className="p-4 overflow-x-auto bg-[#111]">
           {React.Children.map(children, (child, index) =>
             React.isValidElement(child)
               ? React.cloneElement(child, { key: `code-${index}` })
@@ -230,6 +238,26 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       >
         {children}
       </code>
+    ),
+    table: ({ ...props }) => (
+      <div className="my-6 w-full overflow-y-auto rounded-md border border-border bg-secondar/50">
+        <table className="w-full border-collapse border-border" {...props} />
+      </div>
+    ),
+    thead: ({ ...props }) => (
+      <thead className="border-b border-border bg-muted" {...props} />
+    ),
+    tbody: ({ ...props }) => (
+      <tbody className="[&_tr:last-child]:border-0" {...props} />
+    ),
+    tr: ({ ...props }) => (
+      <tr className="border-b border-border transition-colors hover:bg-muted/50" {...props} />
+    ),
+    th: ({ ...props }) => (
+      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0" {...props} />
+    ),
+    td: ({ ...props }) => (
+      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0" {...props} />
     ),
     ...components,
   };

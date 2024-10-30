@@ -14,7 +14,7 @@ npm install @drift-kv/core
 deno add jsr:@drift-kv/core
 
 # Using Bun
-bun add drift-kv
+bun add @drift-kv@core
 ```
 
 ## Quick Start
@@ -22,8 +22,7 @@ bun add drift-kv
 Here's a basic example to get you started with Drift KV:
 
 ```typescript
-import { Drift } from "drift-kv";
-import { z } from "zod";
+import { Drift, DriftEntity } from "@drift-kv/core";
 
 // Initialize Deno KV client
 const client = await Deno.openKv();
@@ -33,23 +32,20 @@ const drift = new Drift({
   client,
   schemas: {
     entities: {
-      user: {
+      user: new DriftEntity({
         name: "user",
-        schema: z.object({
+        schema: (z) => ({
           id: z.string().uuid(),
           name: z.string().min(3),
           email: z.string().email(),
           createdAt: z.date(),
           updatedAt: z.date(),
         }),
-      },
+      }),
     },
   },
   hooks: {
-    beforeConnect: async () => {
-      console.log("Connecting to database...");
-    },
-    afterConnect: async (client) => {
+    onConnect: async (client) => {
       console.log("Connected successfully!");
     },
     onError: async (error) => {
@@ -66,9 +62,11 @@ const drift = new Drift({
 Drift KV works with Deno KV as its database backend. The connection is managed through the `Drift` class constructor:
 
 ```typescript
+import { Drift, DriftEntity } from "@drift-kv/core";
+
 const drift = new Drift({
   client: await Deno.openKv(),
-  // Additional configuration...
+  // See how to configure your entities and queues in the next sections ...
 });
 ```
 
@@ -77,13 +75,25 @@ const drift = new Drift({
 Schemas in Drift KV are defined using Zod, providing runtime type safety and validation:
 
 ```typescript
-const userSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(3),
-  email: z.string().email(),
-  role: z.enum(["user", "admin"]).default("user"),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+const userEntity = new DriftEntity({
+  name: "user",
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
+    name: z.string().min(3),
+    email: z.string().email(),
+    role: z.enum(["user", "admin"]).default("user"),
+  }),
+});
+
+const drift = new Drift({
+  client: await Deno.openKv(),
+  schemas: {
+    entities: {
+      user: userEntity,
+    },
+  },
 });
 ```
 
@@ -97,7 +107,6 @@ const userEntity = drift.entities.user;
 // Create a new user
 const user = await userEntity.create({
   data: {
-    id: crypto.randomUUID(),
     name: "John Doe",
     email: "john@example.com",
   },
@@ -107,11 +116,6 @@ const user = await userEntity.create({
 const users = await userEntity.findMany({
   where: {
     role: "admin",
-  },
-  select: {
-    id: true,
-    name: true,
-    email: true,
   },
 });
 ```
@@ -123,10 +127,7 @@ Drift KV provides various hooks to intercept and modify behavior:
 ```typescript
 const drift = new Drift({
   hooks: {
-    beforeConnect: async () => {
-      // Run before database connection
-    },
-    afterConnect: async (client) => {
+    onConnect: async (client) => {
       // Run after successful connection
     },
     onError: async (error) => {
@@ -149,7 +150,6 @@ const drift = new Drift({
 ```typescript
 const newUser = await drift.entities.user.create({
   data: {
-    id: crypto.randomUUID(),
     name: "Jane Doe",
     email: "jane@example.com",
   },
@@ -167,13 +167,8 @@ const user = await drift.entities.user.findUnique({
 // Find many users with filters
 const users = await drift.entities.user.findMany({
   where: {
-    AND: [
-      { role: "admin" },
-      { email: { contains: "@example.com" } },
-    ],
+    role: "admin",
   },
-  orderBy: { createdAt: "desc" },
-  take: 10,
 });
 ```
 
@@ -217,32 +212,10 @@ try {
 
 ## Best Practices
 
-1. **Type Safety**
-   - Always define proper schemas using Zod
-   - Utilize TypeScript's type inference
-   - Keep your types up to date
-
-2. **Error Handling**
-   - Implement proper error handling using try-catch
-   - Use the built-in error types
-   - Set up error hooks for logging
-
-3. **Connection Management**
-   - Initialize connections early
-   - Handle connection errors gracefully
-   - Close connections when done
-
-4. **Query Optimization**
-   - Use selective queries with `select`
-   - Implement proper filtering with `where`
-   - Use pagination when dealing with large datasets
-
-## Next Steps
-
-- Learn about [Configuration Options](./configuration.md)
-- Explore the [Architecture](./architecture.md)
-- Understand [Entity Management](../entities/basics.md)
-- Implement [Real-time Subscriptions](../real-time/subscriptions.md)
+- [ ] **Type Safety**: Always define proper schemas using Zod, utilize TypeScript's type inference, and keep your types up to date.
+- [ ] **Error Handling**: Implement proper error handling using try-catch, use the built-in error types, and set up error hooks for logging.
+- [ ] **Connection Management**: Initialize connections early, handle connection errors gracefully, and close connections when done.
+- [ ] **Query Optimization**: Use selective queries with `select`, implement proper filtering with `where`, and use pagination when dealing with large datasets.
 
 ## Need Help?
 

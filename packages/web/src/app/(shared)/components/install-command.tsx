@@ -20,7 +20,7 @@ export const INSTALL_COMMANDS = [
     id: "deno",
     name: "Deno",
     icon: DenoIcon,
-    code: 'import { Drift } from "https://deno.land/x/@drift-kv/core/mod.ts";',
+    code: 'deno add jsr:@drift-kv/core',
     language: "typescript",
   },
   {

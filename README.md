@@ -13,7 +13,6 @@ Drift KV is a powerful ORM designed for Deno KV with built-in support for:
 - Database operations
 - Real-time subscriptions
 - Job queues
-- Plugin system
 - Type-safe queries
 - Compatibility with Deno KV, Node.js, Bun.js and Edge environments
 
@@ -185,7 +184,6 @@ These examples showcase the core functionalities of Drift KV. For more detailed 
 
 - **Real-Time Subscriptions**: Watch for changes on entities and receive live updates.
 - **Job Queues**: Define and manage background jobs with ease.
-- **Plugin System**: Easily extend Drift's functionality by adding your own plugins.
 - **Type-Safe Queries**: Validate all operations at compile-time using TypeScript.
 
 ## Roadmap

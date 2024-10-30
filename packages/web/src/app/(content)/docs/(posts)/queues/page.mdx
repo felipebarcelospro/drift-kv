@@ -12,16 +12,12 @@ import { z } from "zod";
 const emailQueue = new DriftQueue({
   name: "email",
   description: "Queue for processing email notifications",
-  schema: z.object({
+  schema: (z) => ({
     to: z.string().email(),
     subject: z.string(),
     body: z.string(),
     attachments: z.array(z.string().url()).optional(),
   }),
-  options: {
-    retryAttempts: 3,
-    timeout: 5000,
-  },
   handler: async (job) => {
     await sendEmail(job.data);
   },
@@ -35,33 +31,28 @@ const emailQueue = new DriftQueue({
 ```typescript
 const imageProcessingQueue = new DriftQueue({
   name: "image-processing",
-  schema: imageJobSchema,
-  options: {
-    // Number of retry attempts for failed jobs
-    retryAttempts: 3,
-    
-    // Timeout in milliseconds
-    timeout: 30000,
-    
-    // Concurrency limit
-    concurrency: 5,
-  },
+  schema: (z) => ({
+    imageUrl: z.string().url(),
+    sizes: z.array(z.number()),
+    format: z.enum(["jpeg", "webp", "png"]),
+    quality: z.number().min(1).max(100),
+  }),
   hooks: {
-    onBeforeEnqueue: async (data) => {
+    onJobBeforeSchedule: async (data) => {
       // Pre-enqueue validation or transformation
     },
-    onStart: async (data) => {
+    onJobStart: async (data) => {
       // Job start handling
     },
-    onSuccess: async (data) => {
+    onJobEnd: async (data) => {
       // Success handling
     },
-    onError: async (error, data) => {
+    onJobError: async (error, data) => {
       // Error handling
     },
-    onEnd: async () => {
-      // Cleanup
-    },
+  },
+  handler: async (job) => {
+    await processImage(job.data);
   },
 });
 ```
@@ -72,8 +63,7 @@ const imageProcessingQueue = new DriftQueue({
 
 ```typescript
 // Add a job to the queue
-await emailQueue.schedule({
-  job: "sendWelcomeEmail",
+await drift.queues.emailQueue.schedule({
   data: {
     to: "user@example.com",
     subject: "Welcome to Drift KV",
@@ -83,12 +73,10 @@ await emailQueue.schedule({
 
 // Add multiple jobs
 await Promise.all([
-  emailQueue.schedule({
-    job: "notification",
+  drift.queues.emailQueue.schedule({
     data: notification1,
   }),
-  emailQueue.schedule({
-    job: "notification",
+  drift.queues.emailQueue.schedule({
     data: notification2,
   }),
 ]);
@@ -98,20 +86,17 @@ await Promise.all([
 
 ```typescript
 // Start processing jobs
-await emailQueue.process({
-  concurrency: 5,
-  timeout: 10000,
-  onWorkerStart: async () => {
-    console.log("Worker started");
-  },
-  onWorkerEnd: async () => {
-    console.log("Worker finished");
-  },
-  onWorkerError: async (error) => {
-    console.error("Worker error:", error);
-  },
-  onJobStart: async (job) => {
-    console.log("Starting job:", job.id);
+await drift.queues.emailQueue.process({
+  hooks: {
+    onJobStart: async (job) => {
+      console.log("Starting job:", job.id);
+    },
+    onJobEnd: async (job) => {
+      console.log("Job completed:", job.id);
+    },
+    onJobError: async (error, job) => {
+      console.error("Job error:", error, "Job ID:", job.id);
+    },
   },
 });
 ```
@@ -121,12 +106,13 @@ await emailQueue.process({
 ```typescript
 const emailQueue = new DriftQueue({
   name: "email",
-  schema: emailSchema,
-  options: {
-    retryAttempts: 3,
-  },
+  schema: (z) => ({
+    to: z.string().email(),
+    subject: z.string(),
+    body: z.string(),
+  }),
   hooks: {
-    onError: async (error, data) => {
+    onJobError: async (error, data) => {
       if (error.code === "SMTP_ERROR") {
         // Handle SMTP errors
         await notifyAdmin(error);
@@ -158,31 +144,27 @@ const emailQueue = new DriftQueue({
 ```typescript
 const imageQueue = new DriftQueue({
   name: "image-processing",
-  schema: z.object({
+  schema: (z) => ({
     imageUrl: z.string().url(),
     sizes: z.array(z.number()),
     format: z.enum(["jpeg", "webp", "png"]),
     quality: z.number().min(1).max(100),
   }),
-  options: {
-    retryAttempts: 2,
-    timeout: 60000, // 1 minute
-  },
   hooks: {
-    onBeforeEnqueue: async (data) => {
+    onJobBeforeSchedule: async (data) => {
       // Validate image URL
       const exists = await checkImageExists(data.imageUrl);
       if (!exists) {
         throw new Error("Image not found");
       }
     },
-    onStart: async (data) => {
+    onJobStart: async (data) => {
       await updateJobStatus(data.id, "processing");
     },
-    onSuccess: async (data) => {
+    onJobEnd: async (data) => {
       await updateJobStatus(data.id, "completed");
     },
-    onError: async (error, data) => {
+    onJobError: async (error, data) => {
       await updateJobStatus(data.id, "failed");
       await notifyAdmin({
         type: "image-processing-failed",
@@ -216,24 +198,19 @@ const imageQueue = new DriftQueue({
 ```typescript
 const exportQueue = new DriftQueue({
   name: "data-export",
-  schema: z.object({
+  schema: (z) => ({
     userId: z.string().uuid(),
     format: z.enum(["csv", "json", "xlsx"]),
     filters: z.record(z.unknown()).optional(),
     notifyEmail: z.string().email(),
   }),
-  options: {
-    retryAttempts: 1,
-    timeout: 300000, // 5 minutes
-  },
   hooks: {
-    onStart: async (data) => {
+    onJobStart: async (data) => {
       await updateExportStatus(data.userId, "processing");
     },
-    onSuccess: async (data) => {
+    onJobEnd: async (data) => {
       await updateExportStatus(data.userId, "completed");
-      await emailQueue.schedule({
-        job: "exportComplete",
+      await drift.queues.emailQueue.schedule({
         data: {
           to: data.notifyEmail,
           subject: "Your export is ready",
@@ -241,10 +218,9 @@ const exportQueue = new DriftQueue({
         },
       });
     },
-    onError: async (error, data) => {
+    onJobError: async (error, data) => {
       await updateExportStatus(data.userId, "failed");
-      await emailQueue.schedule({
-        job: "exportFailed",
+      await drift.queues.emailQueue.schedule({
         data: {
           to: data.notifyEmail,
           subject: "Export failed",
@@ -266,49 +242,6 @@ const exportQueue = new DriftQueue({
     const fileUrl = await storeExport(formatted, userId);
     
     return { fileUrl };
-  },
-});
-```
-
-## Performance Optimization
-
-### Batch Processing
-
-```typescript
-const notificationQueue = new DriftQueue({
-  name: "notifications",
-  schema: notificationSchema,
-  options: {
-    batchSize: 100,
-    processingInterval: 5000, // Process every 5 seconds
-  },
-  handler: async (jobs) => {
-    // Process jobs in batches
-    const notifications = jobs.map(job => job.data);
-    await sendBatchNotifications(notifications);
-  },
-});
-```
-
-### Resource Management
-
-```typescript
-const videoQueue = new DriftQueue({
-  name: "video-processing",
-  schema: videoSchema,
-  options: {
-    concurrency: 2, // Limit concurrent processing
-    memoryLimit: 1024 * 1024 * 512, // 512MB limit
-  },
-  hooks: {
-    onStart: async (data) => {
-      // Allocate resources
-      await acquireResources(data);
-    },
-    onEnd: async () => {
-      // Release resources
-      await releaseResources();
-    },
   },
 });
 ```
@@ -337,7 +270,6 @@ const videoQueue = new DriftQueue({
 
 ## Next Steps
 
-- Learn about [Plugins](../plugins/index.md)
-- Explore [Real-time Features](../real-time/subscriptions.md)
+- Learn about [Real-time Features](../real-time/subscriptions.md)
 - Understand [Error Handling](../advanced/error-handling.md)
 - Review [Performance Optimization](../advanced/performance.md)

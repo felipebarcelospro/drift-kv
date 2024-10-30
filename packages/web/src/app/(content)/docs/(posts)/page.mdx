@@ -4,7 +4,7 @@ Welcome to Drift KV! Drift KV is a powerful, flexible, and type-safe ORM designe
 
 ## Introduction
 
-Drift KV is a robust Object Relational Mapper (ORM) for modern JavaScript and TypeScript projects. Built to support Deno and Node environments, Drift KV helps developers interact with databases efficiently, while maintaining type safety and a rich set of features, including real-time subscriptions, job queues, plugin systems, and type-safe queries.
+Drift KV is a robust Object Relational Mapper (ORM) for modern JavaScript and TypeScript projects. Built to support Deno, Node, and Bun environments, Drift KV helps developers interact with databases efficiently, while maintaining type safety and a rich set of features, including real-time subscriptions, job queues, and type-safe queries.
 
 Drift KV aims to provide an intuitive API, inspired by Prisma and other modern ORMs, but designed to maximize flexibility and performance.
 
@@ -23,8 +23,6 @@ Detailed guides are available in the [Getting Started Guide](docs/getting-starte
 - **Type-Safe Queries**: Drift KV provides full type safety, ensuring consistent data interactions.
 - **Real-Time Subscriptions**: Subscribe to data changes and react in real-time.
 - **Job Queues**: Built-in support for background processing.
-- **Plugin System**: Customize and extend Drift KV with plugins.
-- **Extensive Hooks**: Hook into lifecycle events like queries, transactions, and connections.
 
 ## Installation
 
@@ -50,7 +48,7 @@ Here is an example of how to set up Drift KV:
 
 ```typescript
 import { Drift } from "drift-kv";
-import { z } from "zod";
+
 
 // Initialize the database client
 const client = Deno.openKv();
@@ -62,11 +60,11 @@ const drift = new Drift({
     entities: {
       user: {
         name: "user",
-        schema: {
+        schema: (z) => ({
           id: z.string().uuid(),
           name: z.string().min(3).max(100),
           email: z.string().email(),
-        },
+        }),
       },
     },
   },
@@ -87,7 +85,6 @@ For more usage examples, visit the [Basic Usage Guide](docs/basic-usage-guide.md
 ## Documentation
 
 - [Getting Started](docs/getting-started-guide.md)
-- [Plugins Guide](docs/plugins-guide.md)
 - [Entity Guide](docs/drift-entity-guide.md)
 - [Advanced Topics](docs/advanced-topics-guide.md)
 

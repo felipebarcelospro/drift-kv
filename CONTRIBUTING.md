@@ -117,12 +117,8 @@ drift/
 │   ├── core/
 │   │   ├── Drift.ts               # Main class for the ORM functionality.
 │   │   ├── Client.ts              # Client for handling KV operations.
-│   │   ├── PluginManager.ts       # Manages plugins and their lifecycle.
 │   ├── entities/
 │   │   ├── DriftEntity.ts         # Entity management and CRUD operations.
-│   ├── plugins/
-│   │   ├── CachePlugin.ts         # Cache plugin for performance enhancement.
-│   │   ├── LoggerPlugin.ts        # Logger plugin for logging operations.
 │   ├── jobs/
 │   │   ├── JobQueue.ts            # Job queue for handling background tasks.
 │   ├── utils/
@@ -130,12 +126,10 @@ drift/
 ├── examples/
 │   ├── basic-usage.ts             # Example usage of Drift KV.
 │   ├── job-queue-example.ts       # Example of setting up a job queue.
-│   ├── plugin-usage-example.ts    # Example demonstrating plugin usage.
 ├── docs/
 │   ├── README.md                  # Main documentation file.
 │   ├── contributing.md            # Guide for contributing to the project.
 │   ├── drift-entity-guide.md      # Detailed guide for creating and managing entities.
-│   ├── plugins-guide.md           # Instructions for creating custom plugins.
 │   ├── job-queues-guide.md        # Documentation on using job queues.
 ├── tests/
 │   ├── core/
@@ -143,9 +137,6 @@ drift/
 │   │   ├── Client.test.ts         # Unit tests for Client.ts.
 │   ├── entities/
 │   │   ├── DriftEntity.test.ts    # Unit tests for DriftEntity.ts.
-│   ├── plugins/
-│   │   ├── CachePlugin.test.ts    # Unit tests for CachePlugin.ts.
-│   │   ├── LoggerPlugin.test.ts   # Unit tests for LoggerPlugin.ts.
 ├── LICENSE                        # Project license.
 ├── deno.json                      # Deno configuration file.
 ├── CONTRIBUTING.md                # Contribution guidelines.
