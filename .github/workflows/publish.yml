@@ -45,16 +45,31 @@ jobs:
             node_modules
           key: build-${{ github.sha }}
 
-      - name: Update version
-        run: cd packages/core && npm version ${{ needs.setup.outputs.version }} --no-git-tag-version
+  publish-npm:
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
       
-      - name: Publish to NPM
-        run: cd packages/core && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/core/dist
+            node_modules
+          key: build-${{ github.sha }}
+      
+      
 
   create-release:
-    needs: setup
+    needs: [publish-npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
