@@ -86,7 +86,7 @@ Now, let's combine Next.js 15 and Deno 2 with Drift KV to create a full-stack ap
 import { useEffect, useState } from 'react';
 import { drift } from './api/db';
 
-export async function Page() {
+export default async function Page() {
   const users = await drift.entities.user.findMany();
 
   return (

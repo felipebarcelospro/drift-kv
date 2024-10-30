@@ -74,36 +74,8 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  publish-deno:
-    needs: setup
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2
-      
-      - name: Restore cache
-        uses: actions/cache@v3
-        with:
-          path: packages/core/deno
-          key: build-${{ github.sha }}
-      
-      - name: Update version
-        run: |
-          cd packages/core
-          jq '.version = "${{ needs.setup.outputs.version }}"' deno.json > temp.json && mv temp.json deno.json
-      
-      - name: Publish to Deno
-        run: cd packages/core && deno publish
-        env:
-          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
-
   create-release:
-    needs: [publish-npm, publish-deno]
+    needs: [publish-npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
