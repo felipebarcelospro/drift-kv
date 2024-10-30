@@ -22,8 +22,7 @@ bun add drift-kv
 Here's a basic example to get you started with Drift KV:
 
 ```typescript
-import { Drift } from "drift-kv";
-import { z } from "zod";
+import { Drift } from "@drift-kv/core";
 
 // Initialize Deno KV client
 const client = await Deno.openKv();
@@ -33,23 +32,20 @@ const drift = new Drift({
   client,
   schemas: {
     entities: {
-      user: {
+      user: new DriftEntity({
         name: "user",
-        schema: z.object({
+        schema: (z) => ({
           id: z.string().uuid(),
           name: z.string().min(3),
           email: z.string().email(),
           createdAt: z.date(),
           updatedAt: z.date(),
         }),
-      },
+      }),
     },
   },
   hooks: {
-    beforeConnect: async () => {
-      console.log("Connecting to database...");
-    },
-    afterConnect: async (client) => {
+    onConnect: async (client) => {
       console.log("Connected successfully!");
     },
     onError: async (error) => {
@@ -97,7 +93,6 @@ const userEntity = drift.entities.user;
 // Create a new user
 const user = await userEntity.create({
   data: {
-    id: crypto.randomUUID(),
     name: "John Doe",
     email: "john@example.com",
   },
@@ -107,11 +102,6 @@ const user = await userEntity.create({
 const users = await userEntity.findMany({
   where: {
     role: "admin",
-  },
-  select: {
-    id: true,
-    name: true,
-    email: true,
   },
 });
 ```
@@ -123,10 +113,7 @@ Drift KV provides various hooks to intercept and modify behavior:
 ```typescript
 const drift = new Drift({
   hooks: {
-    beforeConnect: async () => {
-      // Run before database connection
-    },
-    afterConnect: async (client) => {
+    onConnect: async (client) => {
       // Run after successful connection
     },
     onError: async (error) => {
@@ -149,7 +136,6 @@ const drift = new Drift({
 ```typescript
 const newUser = await drift.entities.user.create({
   data: {
-    id: crypto.randomUUID(),
     name: "Jane Doe",
     email: "jane@example.com",
   },
@@ -167,13 +153,8 @@ const user = await drift.entities.user.findUnique({
 // Find many users with filters
 const users = await drift.entities.user.findMany({
   where: {
-    AND: [
-      { role: "admin" },
-      { email: { contains: "@example.com" } },
-    ],
+    role: "admin",
   },
-  orderBy: { createdAt: "desc" },
-  take: 10,
 });
 ```
 

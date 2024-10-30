@@ -1,22 +1,19 @@
 # Advanced Querying in Drift KV
 
-Drift KV provides a powerful and flexible querying system that allows you to build complex queries while mantaining type safety.
+Drift KV provides a powerful and flexible querying system that allows you to build complex queries while maintaining type safety.
 
 ## Query Structure
 
 A typical query in Drift KV consists of several components:
 
 ```typescript
-const results = await UserEntity.findMany({
+const results = await drift.entities.user.findMany({
   where: {     // Filter conditions
     role: "admin",
   },
   select: {    // Field selection
     id: true,
     name: true,
-  },
-  include: {   // Relationship inclusion
-    posts: true,
   },
   orderBy: {   // Sorting
     createdAt: "desc",
@@ -31,29 +28,10 @@ const results = await UserEntity.findMany({
 ### Basic Operators
 
 ```typescript
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   where: {
     // Equality
     role: "admin",
-    
-    // Contains
-    email: { contains: "@example.com" },
-    
-    // Comparison
-    age: { 
-      gte: 18,    // Greater than or equal
-      lt: 65      // Less than
-    },
-    
-    // In array
-    status: {
-      in: ["active", "pending"]
-    },
-    
-    // Not
-    role: {
-      not: "guest"
-    }
   }
 });
 ```
@@ -61,7 +39,7 @@ const users = await UserEntity.findMany({
 ### Logical Operators
 
 ```typescript
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   where: {
     AND: [
       { age: { gte: 18 } },
@@ -83,7 +61,7 @@ const users = await UserEntity.findMany({
 ### String Operations
 
 ```typescript
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   where: {
     // String contains
     name: { contains: "John" },
@@ -92,37 +70,6 @@ const users = await UserEntity.findMany({
     email: { 
       startsWith: "john.",
       endsWith: "@example.com"
-    },
-    
-    // Case sensitivity
-    username: {
-      equals: "johndoe",
-      mode: "insensitive"  // Case-insensitive match
-    }
-  }
-});
-```
-
-### Date and Number Operations
-
-```typescript
-const users = await UserEntity.findMany({
-  where: {
-    // Date comparisons
-    createdAt: {
-      gte: new Date("2024-01-01"),
-      lt: new Date("2025-01-01")
-    },
-    
-    // Numeric ranges
-    age: {
-      gt: 18,
-      lte: 65
-    },
-    
-    // Exact numeric matching
-    points: {
-      equals: 100
     }
   }
 });
@@ -133,7 +80,7 @@ const users = await UserEntity.findMany({
 ### Field Selection
 
 ```typescript
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   select: {
     id: true,
     name: true,
@@ -152,7 +99,7 @@ const users = await UserEntity.findMany({
 ### Relationship Inclusion
 
 ```typescript
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   include: {
     // Simple inclusion
     profile: true,
@@ -191,14 +138,14 @@ const users = await UserEntity.findMany({
 ### Order By
 
 ```typescript
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   // Single field ordering
   orderBy: {
     createdAt: "desc"
   }
 });
 
-const posts = await PostEntity.findMany({
+const posts = await drift.entities.post.findMany({
   // Multiple field ordering
   orderBy: {
     priority: "desc",
@@ -211,13 +158,13 @@ const posts = await PostEntity.findMany({
 
 ```typescript
 // Offset pagination
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   skip: 0,    // Skip N records
   take: 10    // Take N records
 });
 
 // Cursor-based pagination
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   cursor: {
     id: "last-id"
   },
@@ -230,9 +177,9 @@ const users = await UserEntity.findMany({
 ### Count
 
 ```typescript
-const totalUsers = await UserEntity.count();
+const totalUsers = await drift.entities.user.count();
 
-const activeAdmins = await UserEntity.count({
+const activeAdmins = await drift.entities.user.count({
   where: {
     AND: [
       { status: "active" },
@@ -245,14 +192,14 @@ const activeAdmins = await UserEntity.count({
 ### Distinct
 
 ```typescript
-const uniqueRoles = await UserEntity.findMany({
+const uniqueRoles = await drift.entities.user.findMany({
   distinct: ["role"],
   select: {
     role: true
   }
 });
 
-const uniqueStatuses = await UserEntity.findMany({
+const uniqueStatuses = await drift.entities.user.findMany({
   distinct: ["status", "role"],
   select: {
     status: true,
@@ -293,7 +240,7 @@ function buildQuery(filters: FilterParams) {
   return where;
 }
 
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   where: buildQuery({
     role: "admin",
     ageRange: [25, 45]
@@ -305,7 +252,7 @@ const users = await UserEntity.findMany({
 
 ```typescript
 // Find users who have published posts
-const authors = await UserEntity.findMany({
+const authors = await drift.entities.user.findMany({
   where: {
     posts: {
       some: {
@@ -330,7 +277,7 @@ const authors = await UserEntity.findMany({
 1. **Selective Fields**
 ```typescript
 // Good: Select only needed fields
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   select: {
     id: true,
     name: true
@@ -338,18 +285,18 @@ const users = await UserEntity.findMany({
 });
 
 // Avoid: Selecting all fields
-const users = await UserEntity.findMany();
+const users = await drift.entities.user.findMany();
 ```
 
 2. **Efficient Filtering**
 ```typescript
 // Good: Use indexed fields
-const user = await UserEntity.findUnique({
+const user = await drift.entities.user.findUnique({
   where: { email: "user@example.com" }
 });
 
 // Avoid: Complex operations on non-indexed fields
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   where: {
     bio: { contains: "something" }  // Could be slow on large datasets
   }
@@ -359,13 +306,13 @@ const users = await UserEntity.findMany({
 3. **Pagination**
 ```typescript
 // Good: Use pagination for large datasets
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   take: 10,
   skip: 0
 });
 
 // Avoid: Fetching large datasets without pagination
-const users = await UserEntity.findMany();
+const users = await drift.entities.user.findMany();
 ```
 
 ### Indexing Strategy
@@ -388,7 +335,7 @@ const UserEntity = new DriftEntity({
 
 ```typescript
 try {
-  const users = await UserEntity.findMany({
+  const users = await drift.entities.user.findMany({
     where: {
       invalidField: "value"  // This will cause an error
     }
@@ -419,7 +366,7 @@ type UserQueryParams = {
 
 // Use with type checking
 function queryUsers(params: UserQueryParams) {
-  return UserEntity.findMany({
+  return drift.entities.user.findMany({
     where: params
   });
 }

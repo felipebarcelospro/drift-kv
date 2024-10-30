@@ -16,18 +16,18 @@ To create an entity, you need to define a **DriftEntity** object. This object in
 Here is an example of creating a `User` entity:
 
 ```typescript
-import { DriftEntity } from "drift-kv";
-import { z } from "zod";
+import { DriftEntity } from "@drift-kv/core";
+
 
 const UserEntity = new DriftEntity({
   name: "user",
   description: "User entity with role-based access control",
-  schema: {
+  schema: (z) => ({
     id: z.string().uuid(),
     name: z.string().min(3).max(100),
     email: z.string().email(),
     role: z.enum(["admin", "user"]).default("user"),
-  },
+  }),
   options: {
     timestamps: true,
   },
@@ -55,14 +55,12 @@ const UserEntity = new DriftEntity({
 Entities come with several configuration options to customize their behavior:
 
 - **timestamps**: When set to `true`, Drift KV will automatically add `createdAt` and `updatedAt` fields to the entity schema.
-- **indexes**: Define indexes to optimize query performance. These are particularly useful for frequently queried fields.
 
 Example:
 
 ```typescript
 options: {
   timestamps: true,
-  indexes: ["email", "role"],
 },
 ```
 
@@ -85,7 +83,7 @@ Drift entities provide straightforward methods for performing **Create**, **Read
 The `create()` method is used to add a new record to the database.
 
 ```typescript
-const newUser = await UserEntity.create({
+const newUser = await drift.entities.user.create({
   data: {
     id: "123e4567-e89b-12d3-a456-426614174000",
     name: "Felipe",
@@ -96,16 +94,16 @@ const newUser = await UserEntity.create({
 ```
 
 ### Read
-The `findOne()` and `findMany()` methods allow you to retrieve records.
+The `findUnique()` and `findMany()` methods allow you to retrieve records.
 
 ```typescript
-const user = await UserEntity.findOne({
+const user = await drift.entities.user.findUnique({
   where: {
     id: "123e4567-e89b-12d3-a456-426614174000",
   },
 });
 
-const users = await UserEntity.findMany({
+const users = await drift.entities.user.findMany({
   where: {
     role: "user",
   },
@@ -120,7 +118,7 @@ const users = await UserEntity.findMany({
 The `update()` method is used to modify existing records.
 
 ```typescript
-await UserEntity.update({
+await drift.entities.user.update({
   where: {
     id: "123e4567-e89b-12d3-a456-426614174000",
   },
@@ -134,7 +132,7 @@ await UserEntity.update({
 The `delete()` method is used to remove records from the database.
 
 ```typescript
-await UserEntity.delete({
+await drift.entities.user.delete({
   where: {
     id: "123e4567-e89b-12d3-a456-426614174000",
   },
@@ -148,16 +146,15 @@ Here is another example of an entity, `PostEntity`, which is related to the `Use
 const PostEntity = new DriftEntity({
   name: "post",
   description: "Blog post entity",
-  schema: {
+  schema: (z) => ({
     id: z.string().uuid(),
     title: z.string().min(5).max(200),
     content: z.string(),
     authorId: z.string().uuid(),
     published: z.boolean().default(false),
-  },
+  }),
   options: {
     timestamps: true,
-    indexes: ["authorId", "published"],
   },
   hooks: {
     beforeCreate: async (data) => {

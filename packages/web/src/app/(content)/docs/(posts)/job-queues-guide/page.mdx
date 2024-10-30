@@ -15,35 +15,28 @@ To create a job queue, you need to define it using the `DriftQueue` class. Below
 
 ```typescript
 import { DriftQueue } from "drift-kv";
-import { z } from "zod";
+
 
 const sendWelcomeEmail = new DriftQueue({
   name: "send-welcome-email",
   description: "Send welcome email to new users",
-  schema: {
+  schema: (z) => ({
     id: z.string().uuid(),
     name: z.string(),
     email: z.string().email(),
-  },
-  options: {
-    retryAttempts: 3,
-    timeout: 5000,
-  },
+  }),
   hooks: {
-    onBeforeEnqueue: async (data) => {
+    onJobBeforeSchedule: async (data) => {
       console.log("Preparing to enqueue email job:", data);
     },
-    onStart: async (data) => {
+    onJobStart: async (data) => {
       console.log("Starting email job processing:", data);
     },
-    onSuccess: async (data) => {
+    onJobEnd: async (data) => {
       console.log("Email job completed successfully:", data);
     },
-    onError: async (error) => {
+    onJobError: async (error, data) => {
       console.error("Error processing email job:", error);
-    },
-    onEnd: async () => {
-      console.log("Email job finished.");
     },
   },
   handler: async (data) => {
@@ -56,7 +49,6 @@ const sendWelcomeEmail = new DriftQueue({
 ### Key Elements
 - **Name and Description**: Identify the queue and describe its purpose.
 - **Schema**: Define the shape of the data the job should handle using Zod, making it type-safe.
-- **Options**: Set retry attempts and timeout settings for the job.
 - **Hooks**: Customize behavior at various stages of the job lifecycle.
 - **Handler**: The actual logic that runs for each job.
 
@@ -64,8 +56,7 @@ const sendWelcomeEmail = new DriftQueue({
 Once you have a job queue defined, you can schedule jobs to run. Below is an example of scheduling a job to send a welcome email.
 
 ```typescript
-await sendWelcomeEmail.schedule({
-  job: "sendWelcomeEmail",
+await drift.queues.sendWelcomeEmail.schedule({
   data: {
     id: "123e4567-e89b-12d3-a456-426614174000",
     name: "Felipe",
@@ -74,35 +65,32 @@ await sendWelcomeEmail.schedule({
 });
 ```
 
-- **job**: This must match the name of the job defined in the queue.
 - **data**: The payload for the job, which must conform to the schema.
 
 ## Processing Jobs
 To process jobs, you need to call the `process` method. You can configure the number of concurrent workers, timeouts, and worker-level hooks.
 
 ```typescript
-await sendWelcomeEmail.process({
-  queues: ["sendWelcomeEmail"],
-  concurrency: 1,
-  timeout: 5000,
-  onWorkerStart: async () => {
-    console.log("Worker started.");
-  },
-  onWorkerEnd: async () => {
-    console.log("Worker finished.");
-  },
-  onWorkerError: async (error) => {
-    console.error("Worker error:", error);
-  },
-  onJobStart: async (job) => {
-    console.log("Starting job processing:", job);
+await drift.process({
+  topics: ["sendWelcomeEmail"],
+  hooks: {
+    onWorkerStart: async () => {
+      console.log("Worker started.");
+    },
+    onWorkerEnd: async () => {
+      console.log("Worker finished.");
+    },
+    onWorkerError: async (error) => {
+      console.error("Worker error:", error);
+    },
+    onJobStart: async (job) => {
+      console.log("Starting job processing:", job);
+    },
   },
 });
 ```
 
 ### Configuration Parameters
-- **Concurrency**: Number of jobs to be processed simultaneously.
-- **Timeout**: Timeout for each job.
 - **Hooks**: You can define hooks to run custom logic when a worker starts, ends, or encounters an error.
 
 ## Retry Mechanisms
@@ -110,9 +98,20 @@ Drift KV allows you to configure retry attempts for jobs. The `retryAttempts` op
 
 Example:
 ```typescript
-options: {
-  retryAttempts: 3, // The job will be retried up to 3 times before failing.
-  timeout: 5000,    // Timeout for the job execution.
+hooks: {
+  onJobError: async (error, data) => {
+    if (error.code === "SMTP_ERROR") {
+      // Handle SMTP errors
+      await notifyAdmin(error);
+    }
+    
+    // Log error details
+    await logError({
+      queue: "email",
+      error,
+      data,
+    });
+  },
 }
 ```
 

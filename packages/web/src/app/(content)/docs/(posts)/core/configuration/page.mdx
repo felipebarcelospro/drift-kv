@@ -9,7 +9,6 @@ The Drift KV configuration is passed to the `Drift` constructor and consists of 
 ```typescript
 interface DriftConfig {
   client: any;                // Database client instance
-  plugins?: DriftPlugin[];    // Array of plugins
   schemas?: {                 // Schema definitions
     entities?: { [key: string]: (drift: Drift) => DriftEntity<any> };
     queues?: { [key: string]: (drift: Drift) => DriftEntity<any> };
@@ -164,55 +163,6 @@ const drift = new Drift({
 });
 ```
 
-## Plugin System
-
-### Plugin Configuration
-
-Plugins can be added to extend Drift's functionality:
-
-```typescript
-import { loggerPlugin } from "@drift/logger";
-import { cachePlugin } from "@drift/cache";
-
-const drift = new Drift({
-  plugins: [
-    new loggerPlugin({
-      level: "debug",
-      destination: "console",
-    }),
-    new cachePlugin({
-      storage: "redis",
-      ttl: 3600,
-    }),
-  ],
-});
-```
-
-### Custom Plugin Configuration
-
-Creating and configuring a custom plugin:
-
-```typescript
-const customPlugin = new DriftPlugin({
-  name: "customPlugin",
-  description: "Custom functionality plugin",
-  config: {
-    enabled: true,
-    options: {
-      // Custom options...
-    },
-  },
-  hooks: {
-    onConnect: async (client, context) => {
-      // Plugin connection logic
-    },
-    beforeQuery: async (query, context) => {
-      // Query interception logic
-    },
-  },
-});
-```
-
 ## Advanced Configuration
 
 ### Entity Options
@@ -307,17 +257,12 @@ const drift = new Drift({
    - Use environment variables for sensitive information
    - Implement proper error handling in hooks
 
-2. **Plugin Management**
-   - Only include necessary plugins
-   - Configure plugins according to environment
-   - Monitor plugin performance impact
-
-3. **Schema Design**
+2. **Schema Design**
    - Use strict types with Zod
    - Implement proper validation
    - Consider indexing strategy
 
-4. **Hook Implementation**
+3. **Hook Implementation**
    - Keep hooks focused and lightweight
    - Implement proper error handling
    - Consider performance impact
@@ -326,5 +271,4 @@ const drift = new Drift({
 
 - Learn about [Architecture](./architecture.md)
 - Explore [Entity Management](../entities/basics.md)
-- Understand [Plugin Development](../plugins/creating.md)
 - Implement [Real-time Features](../real-time/subscriptions.md)
