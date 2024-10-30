@@ -7,23 +7,35 @@ Drift KV provides a powerful real-time subscription system through the `DriftWat
 ### Watching a Single Entity
 
 ```typescript
-import { DriftEntity } from "drift-kv";
-import { z } from "zod";
+import { Drift, DriftEntity } from "drift-kv";
 
 const UserEntity = new DriftEntity({
   name: "user",
-  schema: z.object({
-    id: z.string().uuid(),
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
     name: z.string(),
     email: z.string().email(),
     status: z.enum(["online", "offline"]),
   }),
 });
 
+const drift = new Drift({
+  client: await Deno.openKv(),
+  schemas: {
+    entities: {
+      user: UserEntity,
+    },
+  },
+});
+
 // Watch a specific user
-UserEntity.watch(
-  "user-123", // ID of the user to watch
+const { cancel } = drift.entities.user.watch(
   {
+    where: {
+      id: "user-123",
+    },
     select: {
       name: true,
       status: true,
@@ -39,7 +51,7 @@ UserEntity.watch(
 
 ```typescript
 // Watch all active users
-UserEntity.watchAll(
+const { cancel } = drift.entities.user.watch(
   {
     where: {
       status: "online",
@@ -49,85 +61,9 @@ UserEntity.watchAll(
       name: true,
       status: true,
     },
-    orderBy: {
-      name: "asc",
-    },
   },
   (users) => {
     console.log("Active users changed:", users);
-  }
-);
-```
-
-## Watch Parameters
-
-### Select and Include
-
-```typescript
-UserEntity.watchAll(
-  {
-    // Select specific fields
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-    // Include related entities
-    include: {
-      posts: {
-        select: {
-          title: true,
-          status: true,
-        },
-        where: {
-          published: true,
-        },
-      },
-    },
-  },
-  (users) => {
-    console.log("Users with posts changed:", users);
-  }
-);
-```
-
-### Filtering
-
-```typescript
-UserEntity.watchAll(
-  {
-    where: {
-      AND: [
-        { status: "online" },
-        { role: "admin" },
-      ],
-      OR: [
-        { lastActive: { gte: new Date(Date.now() - 3600000) } },
-        { priority: { equals: "high" } },
-      ],
-    },
-  },
-  (users) => {
-    console.log("Active admin users changed:", users);
-  }
-);
-```
-
-### Ordering and Distinct
-
-```typescript
-UserEntity.watchAll(
-  {
-    // Order results
-    orderBy: {
-      lastActive: "desc",
-      name: "asc",
-    },
-    // Get distinct values
-    distinct: ["role", "status"],
-  },
-  (users) => {
-    console.log("Ordered and distinct users:", users);
   }
 );
 ```
@@ -139,34 +75,24 @@ UserEntity.watchAll(
 ```typescript
 const MessageEntity = new DriftEntity({
   name: "message",
-  schema: z.object({
-    id: z.string().uuid(),
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
     chatId: z.string().uuid(),
     userId: z.string().uuid(),
     content: z.string(),
-    createdAt: z.date(),
   }),
 });
 
 // Watch new messages in a specific chat
-MessageEntity.watchAll(
+const { cancel } = drift.entities.message.watch(
   {
     where: {
       chatId: "chat-123",
-      createdAt: { 
-        gte: new Date() // Only new messages
+      createdAt: {
+        gte: new Date(),
       },
-    },
-    include: {
-      user: {
-        select: {
-          name: true,
-          avatar: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "asc",
     },
   },
   (messages) => {
@@ -181,24 +107,22 @@ MessageEntity.watchAll(
 ```typescript
 const MetricEntity = new DriftEntity({
   name: "metric",
-  schema: z.object({
-    id: z.string().uuid(),
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
     name: z.string(),
     value: z.number(),
-    timestamp: z.date(),
   }),
 });
 
 // Watch system metrics
-MetricEntity.watchAll(
+const { cancel } = drift.entities.metric.watchAll(
   {
     where: {
       timestamp: {
         gte: new Date(Date.now() - 300000), // Last 5 minutes
       },
-    },
-    orderBy: {
-      timestamp: "desc",
     },
     select: {
       name: true,
@@ -217,19 +141,17 @@ MetricEntity.watchAll(
 
 ```typescript
 try {
-  const unsubscribe = UserEntity.watchAll(
-    {
-      where: {
-        status: "online",
-      },
+  const { cancel } = drift.entities.user.watch({
+    where: {
+      status: "online",
     },
-    (users) => {
+    callback: (users) => {
       console.log("Users updated:", users);
-    }
-  );
+    },
+  });
 
   // Later, unsubscribe to stop watching
-  unsubscribe();
+  cancel();
 } catch (error) {
   if (error instanceof DriftError) {
     console.error("Watcher error:", error.message);
@@ -244,43 +166,31 @@ try {
 1. **Selective Fields**
 ```typescript
 // Good: Select only needed fields
-UserEntity.watchAll(
-  {
-    select: {
-      id: true,
-      status: true,
-    },
+const { cancel } = drift.entities.user.watch({
+  select: {
+    id: true,
+    status: true,
   },
-  callback
-);
+  callback: (users) => {
+    console.log("Users updated:", users);
+  }
+});
 
 // Avoid: Watching all fields
-UserEntity.watchAll({}, callback);
+drift.entities.user.watchAll({}, callback);
 ```
 
 2. **Efficient Filtering**
 ```typescript
 // Good: Use indexed fields for filtering
-UserEntity.watchAll(
-  {
-    where: {
-      status: "online", // Indexed field
-    },
+const { cancel } = drift.entities.user.watch({
+  where: {
+    status: "online", // Indexed field
   },
-  callback
+  callback: (users) => {
+    console.log("Users updated:", users);
+  }
 );
-```
-
-3. **Resource Management**
-```typescript
-// Clean up watchers when not needed
-const unsubscribe = UserEntity.watchAll(params, callback);
-
-// In React component
-useEffect(() => {
-  const unsubscribe = UserEntity.watchAll(params, callback);
-  return () => unsubscribe();
-}, []);
 ```
 
 ## Best Practices

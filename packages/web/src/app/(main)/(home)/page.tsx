@@ -28,7 +28,7 @@ export default function Home() {
       <FeaturesSection />
 
       <motion.div
-        className="container md:max-w-screen-md"
+        className="container md:max-w-screen-lg"
         variants={{
           hidden: { opacity: 0, y: 20 },
           visible: { opacity: 1, y: 0 },
@@ -44,7 +44,7 @@ export default function Home() {
           visible: { opacity: 1, y: 0 },
         }}
       >
-        <div className="container md:max-w-screen-md">
+        <div className="container md:max-w-screen-lg">
           <motion.div
             className="grid gap-8 sm:gap-12"
             variants={{
@@ -71,7 +71,7 @@ export default function Home() {
           visible: { opacity: 1, y: 0 },
         }}
       >
-        <div className="container md:max-w-screen-md">
+        <div className="container md:max-w-screen-lg">
           <CTASection />
         </div>
       </motion.section>

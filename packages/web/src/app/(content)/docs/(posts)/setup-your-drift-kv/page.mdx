@@ -1,19 +1,19 @@
 # Drift KV Configuration Guide
 
-This guide provides a comprehensive overview of Drift KV's configuration options and how to use them effectively.
+This guide provides a comprehensive overview of **Drift KV's** configuration options and how to use them effectively.
 
 ## Configuration Overview
 
-The Drift KV configuration is passed to the `Drift` constructor and consists of several key sections:
+The Drift KV configuration is passed to the **Drift** constructor and consists of several key sections:
 
 ```typescript
-interface DriftConfig {
-  client: any;                // Database client instance
-  schemas?: {                 // Schema definitions
-    entities?: { [key: string]: (drift: Drift) => DriftEntity<any> };
-    queues?: { [key: string]: (drift: Drift) => DriftEntity<any> };
-  };
-  hooks?: DriftHooks;        // Lifecycle hooks
+interface DriftConfig<
+  TEntities extends Record<string, DriftEntity<any, any, any>> = {},
+  TQueues extends Record<string, DriftQueue<any, any, any, any, any>> = {}
+> {
+  client: Kv;
+  schemas: DriftSchemas<TEntities, TQueues>;
+  hooks?: DriftHooks<TEntities, TQueues>;
 }
 ```
 
@@ -36,11 +36,17 @@ const drift = new Drift({
 The client connection can be customized with various options:
 
 ```typescript
-const client = await Deno.openKv({
-  path: "./my-database",      // Custom database path
-  compression: true,          // Enable compression
-  // Additional KV options...
-});
+// Default client
+const kv = await Deno.openKv();
+
+// KV Connect URL
+const kv = await openKv("<KV Connect URL>");
+
+// In-memory database
+const kv = await openKv(":memory:");
+
+// Custom database path (SQLite)
+const kv = await openKv("./my-database.sqlite");
 ```
 
 ## Schema Configuration
@@ -55,17 +61,13 @@ const drift = new Drift({
     entities: {
       user: (drift) => new DriftEntity(drift, {
         name: "user",
-        schema: z.object({
-          id: z.string().uuid(),
+        schema: (z) => {
           name: z.string().min(3),
           email: z.string().email(),
           role: z.enum(["user", "admin"]).default("user"),
-          createdAt: z.date(),
-          updatedAt: z.date(),
-        }),
+        },
         options: {
-          timestamps: true,
-          indexes: ["email", "role"],
+          timestamps: true
         },
       }),
     },
@@ -105,16 +107,32 @@ Drift KV provides various hooks for different lifecycle events:
 
 ```typescript
 interface DriftHooks {
-  beforeConnect?: () => Promise<void>;
-  afterConnect?: (client: any) => Promise<void>;
-  onConnect?: (client: any) => Promise<void>;
-  onEnd?: () => Promise<void>;
+  /** Called when database connection is made. */
+  onConnect?: (client: Kv) => Promise<void>;
+
+  /** Called when an error occurs. */
   onError?: (error: Error) => Promise<void>;
-  beforeQuery?: (query: any) => Promise<void>;
-  onQuery?: (query: any) => Promise<void>;
-  afterQuery?: (result: any) => Promise<void>;
-  beforeTransaction?: () => Promise<void>;
-  afterTransaction?: () => Promise<void>;
+
+  /** Called before executing a query. */
+  beforeQuery?: (query: DriftQueryArgs<TEntities[keyof TEntities]>) => Promise<void>;
+
+  /** Called during query execution. */
+  onQuery?: (query: DriftQueryArgs<TEntities[keyof TEntities]>) => Promise<void>;
+
+  /** Called after query execution. */
+  afterQuery?: (result: QueryResponse<TEntities[keyof TEntities]>) => Promise<void>;
+
+  /** Called before a job is scheduled */
+  onJobBeforeSchedule?: (job: DriftQueueJob<TQueues[keyof TQueues]>) => Promise<void>;
+
+  /** Called after a job is scheduled */
+  onJobSchedule?: (job: DriftQueueJob<TQueues[keyof TQueues]>) => Promise<void>;
+
+  /** Called when a job encounters an error */
+  onJobError?: (error: Error, job: DriftQueueJob<TQueues[keyof TQueues]>) => Promise<void>;
+  
+  /** Called after a job is processed */
+  onJobEnd?: (result: DriftQueueJob<TQueues[keyof TQueues]>) => Promise<void>;
 }
 ```
 
@@ -124,13 +142,21 @@ Example of implementing various hooks:
 
 ```typescript
 const drift = new Drift({
-  hooks: {
-    beforeConnect: async () => {
-      console.log("Initializing database connection...");
-      // Setup connection prerequisites
+  client,
+  schemas: {
+    entities: {
+      user: (drift) => new DriftEntity(drift, {
+        name: "user",
+        schema: (z) => {
+          name: z.string().min(3),
+          email: z.string().email(),
+          role: z.enum(["user", "admin"]).default("user"),
+        },
+      }),
     },
-
-    afterConnect: async (client) => {
+  },
+  hooks: {
+    onConnect: async (client) => {
       console.log("Database connected successfully");
       // Initialize post-connection resources
     },
@@ -150,14 +176,24 @@ const drift = new Drift({
       // Process or transform results
     },
 
-    beforeTransaction: async () => {
-      console.log("Starting transaction");
-      // Prepare transaction context
+    onJobBeforeSchedule: async (job) => {
+      console.log("Scheduling job:", job);
+      // Prepare job context
     },
 
-    afterTransaction: async () => {
-      console.log("Transaction completed");
-      // Cleanup transaction resources
+    onJobSchedule: async (job) => {
+      console.log("Job scheduled:", job);
+      // Initialize post-scheduling resources
+    },
+
+    onJobError: async (error, job) => {
+      console.error("Job error:", error, job);
+      // Log error to monitoring service
+    },
+
+    onJobEnd: async (result) => {
+      console.log("Job result:", result);
+      // Process or transform results
     },
   },
 });
@@ -172,11 +208,13 @@ Configure individual entities with specific options:
 ```typescript
 new DriftEntity(drift, {
   name: "user",
-  schema: userSchema,
+  schema: (z) => {
+    name: z.string().min(3),
+    email: z.string().email(),
+    role: z.enum(["user", "admin"]).default("user"),
+  },
   options: {
     timestamps: true,
-    indexes: ["email", "createdAt"],
-    softDelete: true,
   },
   hooks: {
     beforeCreate: async (data) => {
@@ -197,11 +235,6 @@ Configure job queues with specific options:
 new DriftQueue(drift, {
   name: "emailQueue",
   schema: emailSchema,
-  options: {
-    retryAttempts: 3,
-    timeout: 5000,
-    concurrency: 5,
-  },
   hooks: {
     onError: async (error, data) => {
       // Error handling logic
@@ -217,16 +250,19 @@ new DriftQueue(drift, {
 ```typescript
 const isDev = process.env.NODE_ENV === "development";
 
+const getHooks = () => {
+  if (isDev) {
+    return {
+      beforeQuery: async (query) => {
+        console.log("DEV MODE - Query:", query);
+      },
+    };
+  }
+};
+
 const drift = new Drift({
-  client,
-  hooks: {
-    beforeQuery: isDev ? async (query) => {
-      console.log("DEV MODE - Query:", query);
-    } : undefined,
-    onError: isDev ? async (error) => {
-      console.error("DEV MODE - Error:", error);
-    } : undefined,
-  },
+  // rest of config,
+  hooks: getHooks(),
 });
 ```
 
@@ -236,7 +272,7 @@ const drift = new Drift({
 const isProd = process.env.NODE_ENV === "production";
 
 const drift = new Drift({
-  client,
+  // rest of config,
   hooks: {
     onError: async (error) => {
       // Send to error monitoring service

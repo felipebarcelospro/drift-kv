@@ -140,6 +140,9 @@ const config = {
           params: {
             color: "#7FDBCA",
           },
+          comment: {
+            color: "#636363",
+          },
         },
         meta: {
           keyword: {

@@ -1,0 +1,212 @@
+# Migrating from Deno KV to Drift KV: A Comprehensive Guide
+
+Learn how to seamlessly transition from Deno KV to Drift KV, and explore the advantages of using a type-safe ORM in your Deno projects.
+
+## Introduction
+
+In the world of Deno, Deno KV has been a go-to key-value database for many developers. However, as projects grow in complexity, the need for a more robust, type-safe solution becomes evident. This is where Drift KV steps in—a powerful, type-safe ORM designed for modern TypeScript environments.
+
+This guide will help you understand the benefits of migrating from Deno KV to Drift KV and provide a step-by-step migration plan. We'll also compare the two systems directly to help you make an informed decision.
+
+## Understanding Deno KV
+
+Deno KV is a key-value database built directly into the Deno runtime. It excels at storing simple data structures with very fast reads and writes. Here are some of its key features:
+
+- **Built-in Database**: No external setup required; it's part of the Deno runtime.
+- **Simple API**: Easy to use with basic CRUD operations.
+- **Fast Performance**: Optimized for quick read and write operations.
+
+### Limitations of Deno KV
+
+Despite its advantages, Deno KV has some limitations:
+
+- **Lack of Type Safety**: No built-in support for TypeScript type safety.
+- **Basic Functionality**: Limited features compared to full-fledged ORMs.
+- **Manual Schema Management**: Developers must manage data schemas manually.
+
+## Introducing Drift KV
+
+Drift KV is a type-safe ORM tailored for Deno KV and modern TypeScript projects. It extends the capabilities of Deno KV by providing:
+
+- **Type Safety with Zod**: Define schemas using Zod for runtime type checking.
+- **Advanced Querying**: Powerful query capabilities similar to traditional ORMs.
+- **Lifecycle Hooks**: Intercept and modify behavior with hooks.
+- **Job Queues**: Built-in support for background processing tasks.
+- **Real-time Subscriptions**: Monitor and react to data changes in real-time.
+
+## Why Migrate to Drift KV?
+
+Migrating to Drift KV offers several benefits:
+
+- **Enhanced Type Safety**: Reduce runtime errors with strict type enforcement.
+- **Improved Developer Experience**: Simplify data interactions with a familiar ORM-like API.
+- **Scalability**: Better suited for complex applications with growing data needs.
+- **Additional Features**: Access to job queues and real-time subscriptions without extra setup.
+
+## Migration Guide
+
+### Setting Up Drift KV
+
+Install Drift KV:
+
+```bash
+# Using npm
+npm install @drift-kv/core
+
+# Using Deno
+deno add jsr:@drift-kv/core
+```
+
+Initialize Drift KV in Your Project:
+
+```typescript
+import { Drift } from "@drift-kv/core";
+
+const drift = new Drift({
+  client: await Deno.openKv(),
+  schemas: {
+    // Define your entities here
+  },
+});
+```
+
+### Converting Schemas
+
+Transform your data models to Drift KV entities using Zod schemas:
+
+**Deno KV Example:**
+
+```typescript
+const kv = await Deno.openKv();
+const prefs = {
+  username: "ada",
+  theme: "dark",
+  language: "en-US",
+};
+
+await kv.set(["preferences", "ada"], prefs);
+```
+
+**Drift KV Equivalent:**
+
+```typescript
+import { DriftEntity } from "@drift-kv/core";
+import { z } from "zod";
+
+const UserEntity = new DriftEntity({
+  name: "user",
+  schema: (z) => ({
+    username: z.string(),
+    theme: z.string(),
+    language: z.string(),
+  }),
+});
+
+const drift = new Drift({
+  client: await Deno.openKv(),
+  schemas: {
+    entities: {
+      user: UserEntity,
+    },
+  },
+});
+
+await drift.entities.user.create({
+  data: {
+    username: "ada",
+    theme: "dark",
+    language: "en-US",
+  },
+});
+```
+
+### Updating CRUD Operations
+
+Replace Deno KV operations with Drift KV methods:
+
+
+1. Create - Creating new records
+   ```typescript
+   // Deno KV - No type safety, accepts any key/value pair
+   await kv.set(key, value);
+
+   // Drift KV - Type safe with schema validation
+   // data: T where T matches your entity schema
+   await drift.entities.entityName.create({ data });
+   ```
+
+2. Read - Fetching existing records
+   ```typescript
+   // Deno KV - Returns unknown type, requires manual type casting
+   const data = await kv.get(key);
+
+   // Drift KV - Returns fully typed data matching your schema
+   // where: { id: string } or other unique identifiers
+   const data = await drift.entities.entityName.findUnique({ where });
+   ```
+
+3. Update - Modifying existing records
+   ```typescript
+   // Deno KV - No validation on updated values
+   await kv.set(key, updatedValue);
+
+   // Drift KV - Type safe updates with partial schema validation
+   // where: unique identifier, data: Partial<T> of your schema
+   await drift.entities.entityName.update({ where, data });
+   ```
+
+4. Delete - Removing records
+   ```typescript
+   // Deno KV - Simple key deletion without validation
+   await kv.delete(key);
+
+   // Drift KV - Type safe deletion with proper error handling
+   // where: { id: string } or other unique identifiers
+   await drift.entities.entityName.delete({ where });
+   ```
+
+## Direct Comparison: Pros and Cons
+
+| Feature | Deno KV | Drift KV |
+|---------|---------|----------|
+| Built-in Database | ✅ | Uses Deno KV |
+| Type Safety | ❌ | ✅ |
+| ORM Capabilities | ❌ | ✅ |
+| Schema Definition | Manual | Zod Schemas |
+| Advanced Querying | Basic | Advanced |
+| Lifecycle Hooks | Limited | Extensive |
+| Real-time Subscriptions | Basic | Advanced |
+| Job Queues | ❌ | ✅ |
+| Community Support | Growing | Active |
+
+### Pros of Drift KV
+- **Type Safety**: Minimizes runtime errors.
+- **Developer Productivity**: Faster development with an ORM-like API.
+- **Extensibility**: Easy to add custom logic with hooks.
+- **Additional Features**: Built-in job queues and real-time capabilities.
+
+### Cons of Drift KV
+- **Learning Curve**: Requires learning new concepts beyond Deno KV.
+- **Overhead**: Slightly more setup compared to using Deno KV directly.
+
+## Conclusion
+
+Migrating from Deno KV to Drift KV can significantly enhance your application's scalability, maintainability, and developer experience. With features like type safety, advanced querying, and built-in job queues, Drift KV provides a robust solution for modern Deno projects.
+
+Consider making the switch to take full advantage of these benefits in your next project.
+
+## Frequently Asked Questions
+
+**Is Drift KV a replacement for Deno KV?**
+Drift KV builds upon Deno KV, enhancing it with additional features like type safety and ORM capabilities. It is designed to complement Deno KV, not replace it.
+
+**How does Drift KV handle type safety?**
+Drift KV uses Zod schemas to define entities, providing runtime type checking and validation for your data models.
+
+**Can I use Drift KV with existing Deno KV data?**
+Yes, you can migrate your existing data by defining corresponding Drift KV entities and updating your CRUD operations accordingly.
+
+**Does Drift KV support real-time data subscriptions?**
+Yes, Drift KV offers real-time subscriptions through the DriftWatcher class, allowing you to monitor and react to data changes.
+
+For more information, visit the Drift KV GitHub Repository or join our Discord Community.

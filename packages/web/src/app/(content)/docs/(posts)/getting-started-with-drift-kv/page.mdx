@@ -22,7 +22,7 @@ bun add @drift-kv@core
 Here's a basic example to get you started with Drift KV:
 
 ```typescript
-import { Drift } from "@drift-kv/core";
+import { Drift, DriftEntity } from "@drift-kv/core";
 
 // Initialize Deno KV client
 const client = await Deno.openKv();
@@ -62,9 +62,11 @@ const drift = new Drift({
 Drift KV works with Deno KV as its database backend. The connection is managed through the `Drift` class constructor:
 
 ```typescript
+import { Drift, DriftEntity } from "@drift-kv/core";
+
 const drift = new Drift({
   client: await Deno.openKv(),
-  // Additional configuration...
+  // See how to configure your entities and queues in the next sections ...
 });
 ```
 
@@ -73,13 +75,25 @@ const drift = new Drift({
 Schemas in Drift KV are defined using Zod, providing runtime type safety and validation:
 
 ```typescript
-const userSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(3),
-  email: z.string().email(),
-  role: z.enum(["user", "admin"]).default("user"),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+const userEntity = new DriftEntity({
+  name: "user",
+  options: {
+    timestamps: true,
+  },
+  schema: (z) => ({
+    name: z.string().min(3),
+    email: z.string().email(),
+    role: z.enum(["user", "admin"]).default("user"),
+  }),
+});
+
+const drift = new Drift({
+  client: await Deno.openKv(),
+  schemas: {
+    entities: {
+      user: userEntity,
+    },
+  },
 });
 ```
 
@@ -198,25 +212,10 @@ try {
 
 ## Best Practices
 
-1. **Type Safety**
-   - Always define proper schemas using Zod
-   - Utilize TypeScript's type inference
-   - Keep your types up to date
-
-2. **Error Handling**
-   - Implement proper error handling using try-catch
-   - Use the built-in error types
-   - Set up error hooks for logging
-
-3. **Connection Management**
-   - Initialize connections early
-   - Handle connection errors gracefully
-   - Close connections when done
-
-4. **Query Optimization**
-   - Use selective queries with `select`
-   - Implement proper filtering with `where`
-   - Use pagination when dealing with large datasets
+- [ ] **Type Safety**: Always define proper schemas using Zod, utilize TypeScript's type inference, and keep your types up to date.
+- [ ] **Error Handling**: Implement proper error handling using try-catch, use the built-in error types, and set up error hooks for logging.
+- [ ] **Connection Management**: Initialize connections early, handle connection errors gracefully, and close connections when done.
+- [ ] **Query Optimization**: Use selective queries with `select`, implement proper filtering with `where`, and use pagination when dealing with large datasets.
 
 ## Need Help?
 
