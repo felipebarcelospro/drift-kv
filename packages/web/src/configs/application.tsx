@@ -52,7 +52,7 @@ export const config: Config = {
     {
       title: "Type-Safe Queries",
       description:
-        "Write safer database operations with the robust type system in Drift KV. Get full IntelliSense support and type inference that catches errors at compile-time, making your queries more reliable and maintainable.",
+        "Write safer database operations with the robust type system in Drift KV. Get full IntelliSense support and type inference that catches errors at compile-time, making your queries more reliable and maintainable. No more runtime errors!",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -95,7 +95,7 @@ export const config: Config = {
     {
       title: "Edge-Ready Job Queues",
       description:
-        "Handle background tasks efficiently in any environment with Drift KV's advanced queue system. Leverage features like delayed execution and retries while maintaining optimal performance at the edge.",
+        "Handle background tasks efficiently in any environment with Drift KV's advanced queue system. Leverage features like delayed execution and retries while maintaining optimal performance at the edge and serverless environments.",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"

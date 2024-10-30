@@ -1,10 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import hljs from "highlight.js";
 import { Check, Copy } from "lucide-react";
 import * as React from "react";
-import { CodeBlock as CodeBlockComponent } from "react-code-blocks";
+import { Button } from "./button";
 
 interface TechnologyOption {
   id: string;
@@ -73,10 +74,7 @@ const CodeBlock = React.forwardRef<
 );
 CodeBlock.displayName = "CodeBlock";
 
-const CodeBlockHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+const CodeBlockHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   const { activeTech, setActiveTech, copied, setCopied, technologies } =
     useCodeBlock();
 
@@ -91,7 +89,6 @@ const CodeBlockHeader = React.forwardRef<
 
   return (
     <div
-      ref={ref}
       className={cn(
         "flex items-center justify-between px-4 py-2 bg-secondary/20 border-b border-border",
         className,
@@ -104,44 +101,24 @@ const CodeBlockHeader = React.forwardRef<
         <div className="w-3 h-3 rounded-full bg-green-500 hover:opacity-80 transition-opacity" />
       </div>
       <div className="flex items-center gap-2">
-        <div className="relative z-10">
-          <motion.div
-            className="flex p-1 bg-muted/80 backdrop-blur-sm rounded-lg"
-            layout
-            transition={{
-              type: "spring",
-              stiffness: 500,
-              damping: 30,
-            }}
-          >
-            {technologies.map((tech) => (
-              <motion.button
-                key={tech.id}
-                onClick={() => setActiveTech(tech.id)}
-                className={cn(
-                  "flex items-center justify-center px-3 py-1 cursor-pointer rounded-md transition-colors duration-200",
-                  activeTech === tech.id &&
-                    "bg-background shadow-sm text-foreground",
-                  activeTech !== tech.id &&
-                    "text-muted-foreground hover:text-foreground",
-                )}
-                layout
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 400,
-                  damping: 17,
-                }}
+        {technologies.length > 1 && (
+          <div className="relative">
+            <motion.div>
+              <Button
+                variant="link"
+                onClick={() => setActiveTech(technologies[0].id)}
+                className="flex items-center justify-between px-0"
               >
-                <div className="flex items-center space-x-2">
-                  {tech.icon}
-                  <span>{tech.name}</span>
+                <div className="flex items-center">
+                  {technologies.find(t => t.id === activeTech)?.icon}
+                  <span className="ml-2">
+                    {technologies.find(t => t.id === activeTech)?.name}
+                  </span>
                 </div>
-              </motion.button>
-            ))}
-          </motion.div>
-        </div>
+              </Button>
+            </motion.div>
+          </div>
+        )}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -153,26 +130,34 @@ const CodeBlockHeader = React.forwardRef<
             damping: 17,
           }}
         >
-          <motion.div
-            initial={{ rotate: 0 }}
-            whileTap={{ rotate: 360 }}
-            transition={{
-              type: "spring",
-              stiffness: 200,
-              damping: 10,
-            }}
-          >
+          <AnimatePresence mode="wait">
             {copied ? (
-              <Check className="h-4 w-4" />
+              <motion.div
+                key="copied"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center"
+              >
+                <Check className="h-4 w-4 text-green-500" />
+              </motion.div>
             ) : (
-              <Copy className="h-4 w-4" />
+              <motion.div
+                key="copy"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center"
+              >
+                <Copy className="h-4 w-4" />
+              </motion.div>
             )}
-          </motion.div>
+          </AnimatePresence>
         </motion.button>
       </div>
     </div>
   );
-});
+};
 CodeBlockHeader.displayName = "CodeBlockHeader";
 
 interface CodeBlockContentProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -180,62 +165,53 @@ interface CodeBlockContentProps extends React.HTMLAttributes<HTMLDivElement> {
   language?: string;
   showCopiedOverlay?: boolean;
 }
+const CodeBlockContent = ({
+  className,
+  code,
+  language = "shell", 
+  showCopiedOverlay = false,
+  ...props
+}: CodeBlockContentProps) => {
+    const hljsLanguages = {
+      shell: "bash",
+      bash: "bash",
+      typescript: "typescript"
+    }
 
-const CodeBlockContent = React.forwardRef<
-  HTMLDivElement,
-  CodeBlockContentProps
->(
-  (
-    {
-      className,
-      code,
-      language = "shell",
-      showCopiedOverlay = false,
-      ...props
-    },
-    ref,
-  ) => {
-    const codeTheme = {
-      backgroundColor: "#111",
-      textColor: "#abb2bf",
-      lineNumberColor: "#6272a4",
-      keywordColor: "#c678dd",
-      stringColor: "#98c379",
-      functionColor: "#61afef",
-      variableColor: "#e06c75",
-      substringColor: "#e06c75",
-    };
+    const hljsLanguage = hljsLanguages[language as keyof typeof hljsLanguages] || "bash";
 
     return (
-      <div ref={ref} className={cn("relative w-full", className)} {...props}>
-        <CodeBlockComponent
-          text={code.trim()}
-          language={language}
-          theme={codeTheme}
-          showLineNumbers={false}
-          codeContainerStyle={{
-            backgroundColor: "transparent",
-            padding: "16px",
-            width: "100%",
-            fontFamily:
-              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-            fontSize: "14px",
-            lineHeight: "1.5",
-            letterSpacing: "-0.025em",
-          }}
-        />
-        {showCopiedOverlay && (
-          <div
-            className={cn(
-              "absolute inset-0 opacity-50 transition-opacity duration-500",
-              "bg-green-950"
-            )}
+      <div
+        className={cn("relative w-full", className)}
+        {...props}
+      >
+        <pre className="p-4 w-full font-mono text-sm leading-relaxed tracking-tight">
+          <code
+            key={`${code}-${hljsLanguage}`}
+            className="text-xs font-mono block hljs"
+            dangerouslySetInnerHTML={{
+              __html: hljs.highlight(code, {
+                language: hljsLanguage
+              }).value
+            }}
           />
-        )}
+
+          {showCopiedOverlay && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className={cn(
+                "absolute inset-0",
+                "bg-green-950"
+              )}
+            />
+          )}
+        </pre>
       </div>
     );
-  },
-);
+};
 CodeBlockContent.displayName = "CodeBlockContent";
 
 const ConnectedCodeBlockContent = React.forwardRef<
@@ -252,7 +228,6 @@ const ConnectedCodeBlockContent = React.forwardRef<
 
   return (
     <CodeBlockContent
-      ref={ref}
       code={activeCode}
       language={activeLanguage}
       showCopiedOverlay={copied}

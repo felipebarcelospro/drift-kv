@@ -95,69 +95,69 @@ const config = {
     hljs: {
       custom: {
         base: {
-          background: "transparent",
+          background: "transparent", 
           color: "hsl(var(--foreground))",
         },
         general: {
           keyword: {
-            color: "#c792ea",
+            color: "#57ffae",
             fontStyle: "italic",
           },
           built_in: {
-            color: "#addb67",
+            color: "#57ffae", 
             fontStyle: "italic",
           },
           type: {
-            color: "#82AAFF",
+            color: "#f6fe4b",
           },
           literal: {
-            color: "#ff5874",
+            color: "#ffca4a",
           },
           number: {
-            color: "#F78C6C",
+            color: "#ff83d9",
           },
           regexp: {
-            color: "#5ca7e4",
+            color: "#fcfdc0",
           },
           string: {
-            color: "#ecc48d",
+            color: "#fcfdc0",
           },
           subst: {
-            color: "#d3423e",
+            color: "#fcfdc0",
           },
           symbol: {
-            color: "#82AAFF",
+            color: "#f6fe4b",
           },
           class: {
-            color: "#FFCB8B",
+            color: "#f6fe4b",
           },
           function: {
-            color: "#82AAFF",
+            color: "#f6fe4b",
           },
           title: {
-            color: "#DCDCAA",
+            color: "#ff8f65",
           },
           params: {
-            color: "#7FDBCA",
+            color: "#fcfdc0",
           },
           comment: {
-            color: "#636363",
+            color: "hsla(60, 55%, 94%, 0.66)",
           },
         },
         meta: {
           keyword: {
-            color: "#82AAFF",
+            color: "#57ffae",
           },
           string: {
-            color: "#ecc48d",
+            color: "#fcfdc0",
           },
         },
         tags: {
           name: {
-            color: "#7fdbca",
+            color: "#f2fd13",
           },
           attr: {
-            color: "#C792EA",
+            color: "#f2fd13",
           },
         },
         text: {

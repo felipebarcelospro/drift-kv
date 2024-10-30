@@ -23,7 +23,7 @@ export function BlogLayout({ children }: BlogLayoutProps) {
           <div className="max-w-full markdown-content">{children}</div>
           <CTASection />
         </section>
-        <aside className="sticky top-24 h-[calc(100vh-6rem)] overflow-y-auto">
+        <aside className="relative">
           <TableOfContents />
         </aside>
       </div>

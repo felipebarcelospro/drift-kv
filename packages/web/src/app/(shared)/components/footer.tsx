@@ -1,13 +1,26 @@
+"use client";
+
 import { config } from "@/configs/application";
+import { motion } from "framer-motion";
 import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border relative">
-      <div className="container mx-auto py-8 md:max-w-screen-lg">
-        <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-muted-foreground">
+    <motion.footer
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="border-t border-border relative"
+    >
+      <div className="container mx-auto py-8 px-4 md:px-0 md:max-w-screen-lg">
+        <div className="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-4"
+          >
+            <span className="text-sm text-muted-foreground text-center md:text-left">
               Built by{" "}
               <a
                 href={config.githubUrl}
@@ -24,8 +37,15 @@ export function Footer() {
               </a>
               .
             </span>
-            <div className="flex space-x-2">
-              <a
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 }}
+              className="flex space-x-2"
+            >
+              <motion.a
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 href={config.twitterUrl}
                 className="text-muted-foreground hover:text-primary bg-secondary dark:bg-card p-2 rounded-full"
               >
@@ -43,8 +63,10 @@ export function Footer() {
                   <path d="M4 4l11.733 16h4.267l-11.733 -16z"></path>
                   <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path>
                 </svg>
-              </a>
-              <a
+              </motion.a>
+              <motion.a
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 href={config.githubUrl}
                 className="text-muted-foreground hover:text-primary bg-secondary dark:bg-card p-2 rounded-full"
               >
@@ -63,10 +85,15 @@ export function Footer() {
                   <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
                   <path d="M9 18c-4.51 2-5-2-7-2" />
                 </svg>
-              </a>
-            </div>
-          </div>
-          <div className="flex space-x-4">
+              </motion.a>
+            </motion.div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex space-x-4"
+          >
             <Link
               href={config.privacyPolicyUrl}
               className="text-muted-foreground hover:text-primary text-sm"
@@ -79,9 +106,9 @@ export function Footer() {
             >
               Terms of Use
             </Link>
-          </div>
+          </motion.div>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }

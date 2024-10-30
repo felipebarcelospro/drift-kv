@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Copy, Facebook, Linkedin, Twitter } from "lucide-react";
+import hljs from "highlight.js";
+import { Check, ChevronDown, Clipboard, Copy, Facebook, Linkedin, Twitter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { INSTALL_COMMANDS } from "./install-command";
 
 export function TableOfContents() {
   const [headings, setHeadings] = useState<HTMLHeadingElement[]>([]);
@@ -53,50 +55,267 @@ export function TableOfContents() {
   if (headings.length === 0) return null;
 
   return (
-    <div className="space-y-6 sticky top-24 pb-20">
-      <section className="flex flex-col gap-2">
-        <header>
+    <motion.div 
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-6 sticky top-24"
+    >
+      <motion.section 
+        className="flex flex-col gap-2"
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        <motion.header
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
           <h3 className="text-lg font-semibold mb-2">Share this page</h3>
-        </header>
-        <main className="space-y-2">
-          <Button variant="outline" className="w-full flex justify-start" onClick={() => shareOnSocial('twitter')}>
-            <Twitter className="h-4 w-4" />
-            <span className="ml-2">Share on Twitter</span>
-          </Button>
-          <Button variant="outline" className="w-full flex justify-start" onClick={() => shareOnSocial('linkedin')}>
-            <Linkedin className="h-4 w-4" />
-            <span className="ml-2">Share on LinkedIn</span>
-          </Button>
-          <Button variant="outline" className="w-full flex justify-start" onClick={() => shareOnSocial('facebook')}>
-            <Facebook className="h-4 w-4" />
-            <span className="ml-2">Share on Facebook</span>
-          </Button>
-          <Button variant="outline" className="w-full flex justify-start" onClick={copyLink}>
-            <Copy className="h-4 w-4" />
-            <span className="ml-2">Copy Link</span>
-          </Button>
-        </main>
-      </section>
+        </motion.header>
+        <motion.main 
+          className="space-y-2"
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.1
+              }
+            }
+          }}
+          initial="hidden"
+          animate="show"
+        >
+          {[
+            { platform: 'twitter', Icon: Twitter, label: 'Share on Twitter' },
+            { platform: 'linkedin', Icon: Linkedin, label: 'Share on LinkedIn' },
+            { platform: 'facebook', Icon: Facebook, label: 'Share on Facebook' }
+          ].map(({ platform, Icon, label }) => (
+            <motion.div
+              key={platform}
+              variants={{
+                hidden: { opacity: 0, x: -20 },
+                show: { opacity: 1, x: 0 }
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Button variant="outline" className="w-full flex justify-start" onClick={() => shareOnSocial(platform)}>
+                <Icon className="h-4 w-4" />
+                <span className="ml-2">{label}</span>
+              </Button>
+            </motion.div>
+          ))}
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, x: -20 },
+              show: { opacity: 1, x: 0 }
+            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Button variant="outline" className="w-full flex justify-start" onClick={copyLink}>
+              <Copy className="h-4 w-4" />
+              <span className="ml-2">Copy Link</span>
+            </Button>
+          </motion.div>
+        </motion.main>
+      </motion.section>
 
-      <TOCMenu headings={headings} activeId={activeId} />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+      >
+        <TOCMenu headings={headings} activeId={activeId} />
+      </motion.div>
 
-      <Card className="p-6 mt-8">
-        <h3 className="text-lg font-semibold mb-2">Try Drift KV Today</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Experience the power of modern key-value storage with Drift KV.
-        </p>
-        <Button className="w-full">
-          Get Started
-        </Button>
-      </Card>
-    </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.8, duration: 0.5 }}
+        whileHover={{ scale: 1.02 }}
+      >
+        <Card className="p-6 mt-8">
+          <motion.h3 
+            className="text-lg font-semibold mb-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+          >
+            Try Drift KV Today
+          </motion.h3>
+          <motion.p 
+            className="text-sm text-muted-foreground mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+          >
+            Experience the power of modern key-value storage with Drift KV.
+          </motion.p>
+          <InstallCommandCTA />
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+export function InstallCommandCTA() {
+  const [isCopied, setIsCopied] = useState(false);
+  const [selectedCommand, setSelectedCommand] = useState(INSTALL_COMMANDS[0]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const copyCommand = () => {
+    navigator.clipboard.writeText(selectedCommand.code);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <motion.section>
+        <motion.div 
+          className="relative"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Button
+            variant="link"
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-full flex items-center justify-between px-0"
+          >
+            <div className="flex items-center">
+              <selectedCommand.icon className="h-4 w-4 mr-2" />
+              <span>{selectedCommand.name}</span>
+            </div>
+            <motion.div
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M2.5 4.5L6 8L9.5 4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </motion.div>
+          </Button>
+
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute w-full mt-1 bg-background border border-border rounded-md shadow-lg z-10"
+              >
+                {INSTALL_COMMANDS.map((command) => (
+                  <motion.button
+                    key={command.id}
+                    whileHover={{ backgroundColor: "rgba(0,0,0,0.05)" }}
+                    className={cn(
+                      "w-full flex items-center px-3 py-2 text-sm",
+                      selectedCommand.id === command.id && "bg-muted"
+                    )}
+                    onClick={() => {
+                      // @ts-ignore
+                      setSelectedCommand(command);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <command.icon className="h-4 w-4 mr-2" />
+                    {command.name}
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        <motion.div
+          className="mt-3"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className="relative bg-muted border border-border rounded-md p-2"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.code 
+              className="text-xs font-mono block hljs"
+              layoutId="command-code"
+              dangerouslySetInnerHTML={{
+                __html: hljs.highlight(selectedCommand.code, {
+                  language: 'bash'
+                }).value
+              }}
+            />
+            
+            <motion.div
+              className="absolute top-2 right-1"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={copyCommand}
+                className="h-6 px-2"
+              >
+                <AnimatePresence mode="wait">
+                  {isCopied ? (
+                    <motion.div
+                      key="copied"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center"
+                    >
+                      <Check className="h-3 w-3 text-green-500" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="copy"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center"
+                    >
+                      <Clipboard className="h-3 w-3" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.section>
+    </motion.div>
   );
 }
 
 export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[], activeId: string }) {
   const [openSection, setOpenSection] = useState<string | null>(null);
 
-  // Group headings by H2 sections
   const sections = useMemo(() => {
     const grouped: Record<string, HTMLHeadingElement[]> = {};
     let currentH2: string | null = null;
@@ -113,7 +332,6 @@ export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[]
     return grouped;
   }, [headings]);
 
-  // Set active section open initially
   useEffect(() => {
     if (activeId) {
       const activeSection = Object.keys(sections).find(sectionId => 
@@ -126,12 +344,35 @@ export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[]
   }, [activeId, sections]);
 
   return (
-    <nav className="space-y-4">
-      <div className="flex items-center gap-2">
+    <motion.nav 
+      className="space-y-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.div 
+        className="flex items-center gap-2"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
         <p className="font-semibold text-lg">On This Page</p>
         <div className="h-px flex-1 bg-border" />
-      </div>
-      <ul className="space-y-3 text-sm">
+      </motion.div>
+      <motion.ul 
+        className="space-y-3 text-sm"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
+        initial="hidden"
+        animate="show"
+      >
         {headings.map((heading, index) => {
           if (heading.tagName === 'H2') {
             const hasSubheadings = sections[heading.id]?.length > 1;
@@ -141,17 +382,16 @@ export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[]
             return (
               <motion.li
                 key={heading.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  delay: index * 0.1,
-                  type: "spring",
-                  stiffness: 100
+                variants={{
+                  hidden: { opacity: 0, x: -20 },
+                  show: { opacity: 1, x: 0 }
                 }}
               >
                 {hasSubheadings ? (
                   <div className="space-y-2">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => {
                         setOpenSection(isOpen ? null : heading.id);
                         document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth' });
@@ -162,18 +402,23 @@ export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[]
                       )}
                     >
                       <div className="flex items-center">
-                        <span className={cn(
-                          "mr-2 h-6 w-2 rounded-full bg-muted-foreground/40 transition-colors",
-                          isActive && "bg-foreground",
-                          "group-hover:bg-foreground/60"
-                        )} />
+                        <motion.span 
+                          className={cn(
+                            "mr-2 h-6 w-2 rounded-full bg-muted-foreground/40 transition-colors",
+                            isActive && "bg-foreground",
+                            "group-hover:bg-foreground/60"
+                          )}
+                          animate={{ scale: isActive ? 1.1 : 1 }}
+                        />
                         {heading.textContent}
                       </div>
-                      <ChevronDown className={cn(
-                        "h-4 w-4 transition-transform",
-                        isOpen && "transform rotate-180"
-                      )} />
-                    </button>
+                      <motion.div
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </motion.div>
+                    </motion.button>
 
                     <AnimatePresence>
                       {isOpen && (
@@ -181,24 +426,36 @@ export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[]
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
                           className="pl-4 space-y-2"
                         >
-                          {sections[heading.id].slice(1).map((subheading) => (
-                            <motion.li key={subheading.id}>
-                              <a
+                          {sections[heading.id].slice(1).map((subheading, subIndex) => (
+                            <motion.li 
+                              key={subheading.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: subIndex * 0.1 }}
+                            >
+                              <motion.a
                                 href={`#${subheading.id}`}
                                 className={cn(
                                   "group flex items-center py-1 text-muted-foreground transition-colors hover:text-foreground",
                                   activeId === subheading.id && "text-foreground font-medium"
                                 )}
+                                whileHover={{ x: 4 }}
                               >
-                                <span className={cn(
-                                  "mr-2 h-1.5 w-1.5 rounded-full bg-muted-foreground/40 transition-colors",
-                                  activeId === subheading.id && "bg-foreground",
-                                  "group-hover:bg-foreground/60"
-                                )} />
+                                <motion.span 
+                                  className={cn(
+                                    "mr-2 h-1.5 w-1.5 rounded-full bg-muted-foreground/40 transition-colors",
+                                    activeId === subheading.id && "bg-foreground",
+                                    "group-hover:bg-foreground/60"
+                                  )}
+                                  animate={{ 
+                                    scale: activeId === subheading.id ? 1.2 : 1
+                                  }}
+                                />
                                 {subheading.textContent}
-                              </a>
+                              </motion.a>
                             </motion.li>
                           ))}
                         </motion.ul>
@@ -206,27 +463,31 @@ export function TOCMenu({ headings, activeId }: { headings: HTMLHeadingElement[]
                     </AnimatePresence>
                   </div>
                 ) : (
-                  <a
+                  <motion.a
                     href={`#${heading.id}`}
                     className={cn(
                       "group flex items-center py-1 text-muted-foreground transition-colors hover:text-foreground",
                       isActive && "text-foreground font-medium"
                     )}
+                    whileHover={{ x: 4 }}
                   >
-                    <span className={cn(
-                      "mr-2 h-6 w-2 rounded-full bg-muted-foreground/40 transition-colors",
-                      isActive && "bg-foreground",
-                      "group-hover:bg-foreground/60"
-                    )} />
+                    <motion.span 
+                      className={cn(
+                        "mr-2 h-6 w-2 rounded-full bg-muted-foreground/40 transition-colors",
+                        isActive && "bg-foreground",
+                        "group-hover:bg-foreground/60"
+                      )}
+                      animate={{ scale: isActive ? 1.1 : 1 }}
+                    />
                     {heading.textContent}
-                  </a>
+                  </motion.a>
                 )}
               </motion.li>
             );
           }
           return null;
         })}
-      </ul>
-    </nav>
+      </motion.ul>
+    </motion.nav>
   );
 }

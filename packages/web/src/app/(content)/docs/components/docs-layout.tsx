@@ -22,9 +22,9 @@ export function DocsLayout({ children, sections }: DocsLayoutProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         <motion.div
-          className="col-span-3 relative"
+          className="col-span-3 relative "
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
@@ -46,7 +46,7 @@ export function DocsLayout({ children, sections }: DocsLayoutProps) {
 
         <motion.div
           key={pathname}
-          className="col-span-3"
+          className="col-span-3 pb-20 hidden md:block"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}

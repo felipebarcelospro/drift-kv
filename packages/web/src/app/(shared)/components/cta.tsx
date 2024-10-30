@@ -74,11 +74,11 @@ export function CTASection() {
             </svg>
             Built for Deno KV
           </span>
-          <h2 className="text-4xl font-bold text-foreground">
-            Start building with Drift KV and Deno KV
+          <h2 className="text-4xl font-bold text-foreground leading-tight">
+            Discover Drift KV: The Ultimate Type-Safe ORM for Deno KV
           </h2>
           <p className="text-base text-muted-foreground">
-            A type-safe ORM with built-in support for real-time subscriptions, job queues, and seamless compatibility with Deno KV, Node.js, Bun.js and Edge environments.
+            Experience a powerful ORM with real-time subscriptions, job queues, and seamless compatibility across Deno KV, Node.js, Bun.js, and Edge environments.
           </p>
           <div className="flex justify-center gap-4">
             <Button asChild className="rounded-full">
