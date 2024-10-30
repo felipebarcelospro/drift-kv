@@ -1,0 +1,197 @@
+# Introducing the Drift KV CLI: Streamline Your Deno KV Workflow
+
+We're excited to announce the launch of the Drift KV Command Line Interface (CLI)! This powerful tool is designed to help developers efficiently scaffold and manage their Drift KV projects. With the Drift KV CLI, you can quickly set up projects, create entities, and manage queues—all through simple command-line interactions.
+
+## What is Drift KV?
+
+Drift KV is a powerful, type-safe ORM tailored for Deno KV and modern TypeScript environments. It simplifies data interactions by providing:
+
+- **Type Safety**: Define schemas using Zod for runtime type checking.
+- **Advanced Querying**: Offers powerful query capabilities similar to traditional ORMs.
+- **Lifecycle Hooks**: Intercept and modify behavior with hooks.
+- **Job Queues**: Built-in support for background processing tasks.
+- **Real-time Subscriptions**: Monitor and react to data changes in real-time.
+
+## Why Use the Drift KV CLI?
+
+While Drift KV offers a robust set of features, managing projects manually can be time-consuming and error-prone. The Drift KV CLI addresses these challenges by:
+
+- Automating repetitive tasks like project setup and configuration.
+- Providing interactive wizards for entity and queue creation.
+- Ensuring consistency across your project structure.
+- Reducing the learning curve for new team members.
+
+## Key Features
+
+### Project Initialization with `drift-kv init`
+
+- **Custom Directory Structure**: Set up your preferred folder layout.
+- **Configuration File Generation**: Automatically creates a `drift.config.js`.
+- **Initial Service Setup**: Generates a base service file to get you started.
+- **TypeScript Configuration**: Sets up TypeScript settings and build scripts.
+
+### Entity Creation Wizard with `drift-kv create entity`
+
+- **Interactive Prompts**: Define your entity's schema using an intuitive interface.
+- **Schema Definition with Zod**: Leverage Zod for type-safe schema validation.
+- **Timestamp Options**: Easily include `createdAt` and `updatedAt` fields.
+- **Automatic Index File Updates**: Keeps your imports organized.
+
+### Queue Creation Wizard with `drift-kv create queue`
+
+- **Job Schema Definition**: Define the data structure for your queue jobs.
+- **Handler Template Generation**: Provides a boilerplate for your job processors.
+- **Queue Registration**: Automatically adds new queues to your project index.
+
+### Additional Features
+
+- **Automatic TypeScript Configuration**: Ensures your project is ready to compile.
+- **Interactive Prompts for Schema Definition**: No need to write boilerplate code manually.
+- **Automatic Index File Management**: Keeps your entities and queues organized.
+
+## Getting Started
+
+### Installation
+
+You can install the Drift KV CLI globally using npm:
+
+```bash
+  npm install -g @drift-kv/cli
+```
+
+Alternatively, you can use npx to run the CLI without installing:
+
+```bash
+  npx @drift-kv/cli init
+```
+
+### Project Initialization
+
+To initialize a new Drift KV project, run:
+
+```bash
+  drift-kv init
+```
+
+You'll be prompted to provide:
+
+- **Entities Path**: Where your entities will be stored (default: `./drift/entities`).
+- **Queues Path**: Where your queues will be stored (default: `./drift/queues`).
+- **Drift Service Path**: The location of your Drift service file (default: `./drift/drift-service.ts`).
+
+The CLI will then:
+
+- Create the specified directories.
+- Generate a `drift.config.js` file.
+- Set up an initial `drift-service.ts` file.
+- Initialize index files for entities and queues.
+
+### Creating Entities
+
+To create a new entity, use:
+
+```bash
+  drift-kv create entity
+```
+
+The CLI will guide you through:
+
+- **Entity Name**: Provide a name for your entity.
+- **Include Timestamps**: Choose whether to include `createdAt` and `updatedAt` fields.
+- **Field Definitions**: Add fields with their respective types and optionality.
+
+Supported Field Types:
+
+- `string`
+- `number`
+- `boolean`
+- `date`
+- `uuid`
+
+Example:
+
+```bash
+  ? Entity name: User
+  ? Include timestamps? Yes
+  ? Field name: name
+  ? Field type: string
+  ? Is this field optional? No
+  ? Add another field? Yes
+  ... (additional fields)
+```
+
+The CLI will then:
+
+- Generate a TypeScript file for the entity with a Zod schema.
+- Update the entities index file.
+- Ensure everything is TypeScript-ready.
+
+### Managing Queues
+
+To create a new queue, run:
+
+```bash
+  drift-kv create queue
+```
+
+You'll be prompted to:
+
+- **Queue Name**: Provide a name for your queue.
+- **Job Schema Definition**: Define the data structure for jobs in this queue.
+
+Example:
+
+```bash
+  ? Queue name: EmailQueue
+  ? Field name: to
+  ? Field type: string
+  ? Is this field optional? No
+  ? Add another field? Yes
+  ... (additional fields)
+```
+
+The CLI will:
+
+- Create a TypeScript file for the queue with a Zod schema and a handler template.
+- Update the queues index file.
+- Set up initial error handling and hooks.
+
+## Under the Hood
+
+### Automatic TypeScript Configuration
+
+The CLI ensures your TypeScript settings are correctly configured by:
+
+- Setting up a `tsconfig.json` file if one doesn't exist.
+- Configuring compiler options for compatibility.
+- Adding build scripts to your `package.json`.
+
+### Interactive Prompts for Schema Definition
+
+By leveraging inquirer, the CLI provides an intuitive interface for defining schemas without writing boilerplate code.
+
+### Automatic Index File Management
+
+The CLI updates your index.ts files for entities and queues, ensuring that new additions are immediately available throughout your project.
+
+## What's Next?
+
+We're continuously working to enhance the Drift KV CLI. Upcoming features include:
+
+- **Sophisticated Entity Relationship Handling**: Support for complex relationships between entities.
+- **Migration Generation**: Tools to manage database schema changes.
+- **Validation for Existing Entities/Queues**: Ensuring consistency and integrity.
+- **Enhanced Error Handling**: More descriptive error messages and recovery options.
+- **Custom Templates**: Allowing developers to define their own code templates.
+
+## Conclusion
+
+The Drift KV CLI is designed to make your development experience smoother and more efficient. By automating routine tasks and providing helpful wizards, you can focus on building your application logic rather than setting up boilerplate code.
+
+Get started today and accelerate your Drift KV development workflow!
+
+## Need Help or Have Suggestions?
+
+- **GitHub Repository**: [Drift KV CLI GitHub](https://github.com/felipebarcelospro/drift-kv/packages/cli)
+- **Join Our Community**: [GitHub Discussions](https://github.com/felipebarcelospro/drift-kv/discussions)
+- **Documentation**: [Drift KV Docs](https://felipebarcelospro.github.io/drift-kv/docs)
